@@ -10,7 +10,7 @@ export default function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
-  const handleUpload = async (fileA, fileB) => {
+  const handleUpload = async (fileA, fileB, fileC) => {
     setScreen('processing')
     setError(null)
 
@@ -19,10 +19,13 @@ export default function App() {
       formData.append('file_a', fileA)
       formData.append('file_b', fileB)
 
-      const res = await fetch(`${API_URL}/api/reconcile`, {
-        method: 'POST',
-        body: formData,
-      })
+      let endpoint = `${API_URL}/api/reconcile`
+      if (fileC) {
+        formData.append('file_c', fileC)
+        endpoint = `${API_URL}/api/reconcile-triangular`
+      }
+
+      const res = await fetch(endpoint, { method: 'POST', body: formData })
 
       if (!res.ok) {
         const err = await res.json()
@@ -59,6 +62,27 @@ export default function App() {
     }
   }
 
+  const handleDemoTriangular = async () => {
+    setScreen('processing')
+    setError(null)
+
+    try {
+      const res = await fetch(`${API_URL}/api/demo?triangular=true`, { method: 'POST' })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Error cargando demo triangular')
+      }
+
+      const result = await res.json()
+      setData(result)
+      setScreen('dashboard')
+    } catch (e) {
+      setError(e.message)
+      setScreen('upload')
+    }
+  }
+
   const handleReset = () => {
     setScreen('upload')
     setData(null)
@@ -68,7 +92,12 @@ export default function App() {
   return (
     <>
       {screen === 'upload' && (
-        <Upload onUpload={handleUpload} onDemo={handleDemo} error={error} />
+        <Upload
+          onUpload={handleUpload}
+          onDemo={handleDemo}
+          onDemoTriangular={handleDemoTriangular}
+          error={error}
+        />
       )}
       {screen === 'processing' && <Processing />}
       {screen === 'dashboard' && data && (

@@ -15,20 +15,30 @@ const sevColors = {
   Baja: { bg: '#f0fdf4', text: '#16A34A', border: '#86efac' },
 }
 const typeColors = {
+  // A vs B
   'Registro faltante en contabilidad': '#DC2626',
   'Duplicado en contabilidad': '#ea580c',
   'Suplemento no reflejado': '#F59E0B',
   'Comisión incorrecta': '#7c3aed',
   'Diferencia de timing': '#0e7490',
   'Redondeo': '#64748b',
+  // A vs C (liquidaciones — blue family)
+  'Póliza no liquidada por aseguradora': '#2563eb',
+  'Diferencia prima liquidada': '#1d4ed8',
+  'Comisión liquidada incorrecta': '#4f46e5',
 }
 const typeIcons = {
+  // A vs B
   'Registro faltante en contabilidad': '∅',
   'Duplicado en contabilidad': '⊕',
   'Suplemento no reflejado': 'Δ',
   'Comisión incorrecta': '%',
   'Diferencia de timing': '⏱',
   'Redondeo': '≈',
+  // A vs C (liquidaciones)
+  'Póliza no liquidada por aseguradora': '⊘',
+  'Diferencia prima liquidada': '↕',
+  'Comisión liquidada incorrecta': '€',
 }
 const resLabels = {
   ajustado: { label: 'Ajustado', color: '#16A34A' },
@@ -119,6 +129,11 @@ export default function Dashboard({ data, onReset }) {
             </h1>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
               Analizado: {data.fecha_analisis} · {fmtInt(data.registros_produccion)} registros procesados
+              {data.triangular && (
+                <span style={{ marginLeft: '8px', fontSize: '11px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '1px 7px' }}>
+                  Cuadre triangular
+                </span>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -278,6 +293,11 @@ export default function Dashboard({ data, onReset }) {
                     {isRes && <span style={{ color: resLabels[d.resolucion]?.color || '#16A34A' }}>✓</span>}
                     <span style={{ fontSize: '14px', color: tc, fontWeight: 700, width: '20px', textAlign: 'center' }}>{typeIcons[d.tipo] || '?'}</span>
                     <Badge text={d.severidad} colors={sc} />
+                    {d.fuente === 'Liquidación aseguradora' && (
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '1px 6px' }}>
+                        LIQ
+                      </span>
+                    )}
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#1B2A4A' }}>{d.poliza}</span>
                     <span style={{ fontSize: '12px', color: '#64748b' }}>{d.aseguradora} · {d.ramo}</span>
                     {isRes && d.resolucion && (
@@ -309,6 +329,13 @@ export default function Dashboard({ data, onReset }) {
                         ))}
                       </div>
 
+                      {d.fuente === 'Liquidación aseguradora' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '3px 10px' }}>
+                            Fuente: Liquidación aseguradora
+                          </span>
+                        </div>
+                      )}
                       <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 14px', marginBottom: '8px' }}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.5px', color: tc, marginBottom: '4px', fontWeight: 700 }}>Análisis</div>
                         <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>{d.explicacion}</div>
