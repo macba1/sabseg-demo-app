@@ -90,7 +90,7 @@ export default function Upload({ onUpload, onDemo, error }) {
       <div style={s.card}>
         <div style={s.tag}>Motor de Reconciliación</div>
         <h1 style={s.title}>
-          Cuadre <span style={s.bold}>Producción vs Contabilidad</span>
+          Cuadre <span style={s.bold}>Estadística de Venta vs Contabilidad</span>
         </h1>
         <p style={s.sub}>
           Sube los dos ficheros del cierre contable. El sistema los cruzará automáticamente,
@@ -100,7 +100,7 @@ export default function Upload({ onUpload, onDemo, error }) {
         {error && <div style={s.error}>{error}</div>}
 
         <DropZone
-          label="Fichero A — Estadística de venta / Producción"
+          label="Fichero A — Estadística de Venta"
           file={fileA}
           onFile={setFileA}
         />

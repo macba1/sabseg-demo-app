@@ -111,7 +111,7 @@ export default function Dashboard({ data, onReset }) {
               Cierre Contable — Análisis Automático
             </div>
             <h1 style={{ fontSize: '26px', fontWeight: 300, margin: 0, color: '#1e293b' }}>
-              Cuadre <span style={{ fontWeight: 700 }}>Producción vs Contabilidad</span>
+              Cuadre <span style={{ fontWeight: 700 }}>Estadística de Venta vs Contabilidad</span>
             </h1>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
               Analizado: {data.fecha_analisis} · {fmtInt(data.registros_produccion)} registros procesados
@@ -163,7 +163,7 @@ export default function Dashboard({ data, onReset }) {
           {/* Main numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
             {[
-              { l: 'Producción', v: fmt(data.prima_total_produccion), s: `${fmtInt(data.registros_produccion)} registros` },
+              { l: 'Estadística de Venta', v: fmt(data.prima_total_produccion), s: `${fmtInt(data.registros_produccion)} registros` },
               { l: 'Contabilidad', v: fmt(data.prima_total_contabilidad), s: `${fmtInt(data.registros_contabilidad)} registros` },
               { l: 'Diferencia bruta', v: fmt(Math.abs(data.diferencia_bruta)), s: `${data.total_discrepancias} partidas`, a: '#d97706' },
             ].map(({ l, v, s, a }) => (
@@ -295,7 +295,7 @@ export default function Dashboard({ data, onReset }) {
                         {[
                           { l: 'Cliente', v: d.cliente },
                           { l: 'Recibo', v: d.recibo },
-                          { l: 'Producción', v: fmt(d.importe_produccion), bold: true },
+                          { l: 'Estadística de Venta', v: fmt(d.importe_produccion), bold: true },
                           { l: 'Contabilidad', v: fmt(d.importe_contabilidad), bold: true },
                         ].map(({ l, v, bold }) => (
                           <div key={l}>
