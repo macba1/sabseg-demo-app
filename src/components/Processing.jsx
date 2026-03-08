@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Logo from './Logo'
 
 const steps = [
   'Leyendo ficheros...',
@@ -25,33 +26,35 @@ export default function Processing() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#f1f5f9', display: 'flex',
+      minHeight: '100vh', background: '#FFFFFF', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: '32px 20px',
     }}>
       <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center' }}>
+        <Logo />
+
         {/* Spinner */}
         <div style={{ marginBottom: '32px' }}>
           <svg width="64" height="64" viewBox="0 0 64 64" style={{ animation: 'spin 1.5s linear infinite' }}>
-            <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" strokeWidth="4" />
-            <circle cx="32" cy="32" r="28" fill="none" stroke="#e94560" strokeWidth="4"
+            <circle cx="32" cy="32" r="28" fill="none" stroke="#E2E8F0" strokeWidth="4" />
+            <circle cx="32" cy="32" r="28" fill="none" stroke="#E8721A" strokeWidth="4"
               strokeDasharray="176" strokeDashoffset="132" strokeLinecap="round" />
           </svg>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
 
-        <div style={{ fontSize: '20px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
+        <div style={{ fontSize: '20px', fontWeight: 600, color: '#1B2A4A', marginBottom: '8px' }}>
           Analizando cierre contable
         </div>
 
-        <div style={{ fontSize: '14px', color: '#e94560', marginBottom: '24px', minHeight: '20px' }}>
+        <div style={{ fontSize: '14px', color: '#E8721A', marginBottom: '24px', minHeight: '20px' }}>
           {steps[step]}
         </div>
 
         {/* Progress bar */}
-        <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+        <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
           <div style={{
             height: '100%', width: `${pct}%`,
-            background: 'linear-gradient(90deg, #e94560, #f87171)',
+            background: 'linear-gradient(90deg, #E8721A, #F59E0B)',
             borderRadius: '3px', transition: 'width 0.5s ease',
           }} />
         </div>

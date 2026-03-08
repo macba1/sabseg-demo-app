@@ -1,41 +1,44 @@
 import { useState, useRef } from 'react'
+import Logo from './Logo'
+
+const ORANGE = '#E8721A'
 
 const s = {
-  page: { minHeight: '100vh', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' },
+  page: { minHeight: '100vh', background: '#FFFFFF', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' },
   card: { maxWidth: '560px', width: '100%' },
-  tag: { fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: '#e94560', fontWeight: 700, marginBottom: '12px' },
-  title: { fontSize: '32px', fontWeight: 300, color: '#1e293b', marginBottom: '8px', lineHeight: 1.2 },
+  tag: { fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: ORANGE, fontWeight: 700, marginBottom: '12px' },
+  title: { fontSize: '32px', fontWeight: 300, color: '#1B2A4A', marginBottom: '8px', lineHeight: 1.2 },
   bold: { fontWeight: 700 },
   sub: { fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '32px' },
   dropzone: (active, hasFile) => ({
-    border: `2px dashed ${active ? '#e94560' : hasFile ? '#86efac' : '#e2e8f0'}`,
+    border: `2px dashed ${active ? ORANGE : hasFile ? '#86efac' : '#E2E8F0'}`,
     borderRadius: '14px',
     padding: '28px 24px',
     textAlign: 'center',
     cursor: 'pointer',
-    background: active ? '#e9456008' : hasFile ? '#f0fdf4' : '#ffffff',
+    background: active ? '#E8721A08' : hasFile ? '#f0fdf4' : '#F8F9FA',
     transition: 'all 0.2s ease',
     marginBottom: '12px',
   }),
   label: { fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#64748b', marginBottom: '8px' },
-  filename: { fontSize: '14px', color: '#16a34a', fontWeight: 600 },
+  filename: { fontSize: '14px', color: '#16A34A', fontWeight: 600 },
   placeholder: { fontSize: '14px', color: '#94a3b8' },
   hint: { fontSize: '12px', color: '#94a3b8', marginTop: '4px' },
   btn: (enabled) => ({
     width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
-    background: enabled ? '#e94560' : '#e2e8f0', color: enabled ? '#fff' : '#94a3b8',
+    background: enabled ? ORANGE : '#E2E8F0', color: enabled ? '#fff' : '#94a3b8',
     cursor: enabled ? 'pointer' : 'default', fontSize: '15px', fontWeight: 700,
     marginTop: '20px', transition: 'all 0.2s ease',
   }),
   demo: {
-    width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0',
+    width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #E2E8F0',
     background: 'transparent', color: '#64748b', cursor: 'pointer', fontSize: '13px',
     fontWeight: 600, marginTop: '10px',
   },
   divider: { display: 'flex', alignItems: 'center', gap: '12px', margin: '20px 0' },
-  line: { flex: 1, height: '1px', background: '#e2e8f0' },
+  line: { flex: 1, height: '1px', background: '#E2E8F0' },
   or: { fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' },
-  error: { background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#dc2626' },
+  error: { background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#DC2626' },
 }
 
 function DropZone({ label, file, onFile, accept }) {
@@ -88,6 +91,7 @@ export default function Upload({ onUpload, onDemo, error }) {
   return (
     <div style={s.page}>
       <div style={s.card}>
+        <Logo />
         <div style={s.tag}>Motor de Reconciliación</div>
         <h1 style={s.title}>
           Cuadre <span style={s.bold}>Estadística de Venta vs Contabilidad</span>
