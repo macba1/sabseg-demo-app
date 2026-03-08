@@ -25,21 +25,21 @@ export default function Processing() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#080d1a', display: 'flex',
+      minHeight: '100vh', background: '#f1f5f9', display: 'flex',
       alignItems: 'center', justifyContent: 'center', padding: '32px 20px',
     }}>
       <div style={{ maxWidth: '480px', width: '100%', textAlign: 'center' }}>
         {/* Spinner */}
         <div style={{ marginBottom: '32px' }}>
           <svg width="64" height="64" viewBox="0 0 64 64" style={{ animation: 'spin 1.5s linear infinite' }}>
-            <circle cx="32" cy="32" r="28" fill="none" stroke="#1e293b" strokeWidth="4" />
+            <circle cx="32" cy="32" r="28" fill="none" stroke="#e2e8f0" strokeWidth="4" />
             <circle cx="32" cy="32" r="28" fill="none" stroke="#e94560" strokeWidth="4"
               strokeDasharray="176" strokeDashoffset="132" strokeLinecap="round" />
           </svg>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
 
-        <div style={{ fontSize: '20px', fontWeight: 600, color: '#fff', marginBottom: '8px' }}>
+        <div style={{ fontSize: '20px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
           Analizando cierre contable
         </div>
 
@@ -48,14 +48,14 @@ export default function Processing() {
         </div>
 
         {/* Progress bar */}
-        <div style={{ height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+        <div style={{ height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
           <div style={{
             height: '100%', width: `${pct}%`,
             background: 'linear-gradient(90deg, #e94560, #f87171)',
             borderRadius: '3px', transition: 'width 0.5s ease',
           }} />
         </div>
-        <div style={{ fontSize: '12px', color: '#475569' }}>{pct}%</div>
+        <div style={{ fontSize: '12px', color: '#64748b' }}>{pct}%</div>
       </div>
     </div>
   )
