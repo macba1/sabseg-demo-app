@@ -212,11 +212,147 @@ const CANONICAL_LABELS = {
   commission_pct: '% Comisión', commission_amount: 'Comisión €', payment_frequency: 'Forma Pago',
   inception_date: 'F. Efecto', expiry_date: 'F. Vencimiento', status: 'Estado', sector: 'Sector',
   region: 'Región', sales_agent: 'Comercial', notes: 'Observaciones',
+  _source_file: 'Fichero origen', _source_country: 'País origen',
+}
+
+function ConsolidatedView({ consolidated }) {
+  const cols = consolidated.canonical_columns || []
+  const preview = consolidated.consolidated_preview || []
+  const summaries = consolidated.file_summaries || []
+
+  return (
+    <div>
+      {/* Summary cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        {[
+          { l: 'Ficheros consolidados', v: consolidated.total_files, c: '#1B2A4A' },
+          { l: 'Registros totales', v: (consolidated.total_records || 0).toLocaleString('es-ES'), c: '#1B2A4A' },
+          { l: 'Países unificados', v: (consolidated.countries || []).join(', '), c: ORANGE },
+          { l: 'Columnas canónicas', v: cols.length, c: '#1B2A4A' },
+        ].map(c => (
+          <div key={c.l} style={cs.panel}>
+            <div style={cs.lbl}>{c.l}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: c.c }}>{c.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-file breakdown */}
+      <div style={{ ...cs.panel, marginBottom: '16px' }}>
+        <div style={cs.lbl}>Desglose por fichero</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          {summaries.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{
+                fontSize: '12px', fontWeight: 700, color: '#fff', background: ORANGE,
+                borderRadius: '4px', padding: '2px 8px',
+              }}>{s.country || '??'}</span>
+              <span style={{ fontSize: '13px', color: '#1B2A4A', flex: 1 }}>{s.filename}</span>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748b' }}>
+                {s.error ? <span style={{ color: '#DC2626' }}>Error</span> : `${s.records} registros`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Consolidated preview table */}
+      <div style={{ ...cs.panel, padding: '16px' }}>
+        <div style={{ ...cs.lbl, marginBottom: '12px' }}>Preview del dataset consolidado ({preview.length} de {consolidated.total_records} registros)</div>
+        <div style={{ overflowX: 'auto' }}>
+          {preview.length > 0 ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #E2E8F0' }}>
+                  {cols.map(c => (
+                    <th key={c} style={{ ...th, fontSize: '10px', whiteSpace: 'nowrap' }}>
+                      {CANONICAL_LABELS[c] || c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {preview.map((row, i) => (
+                  <tr key={i} style={{
+                    borderBottom: '1px solid #f1f5f9',
+                    background: i % 2 === 0 ? '#FFFFFF' : '#F8F9FA',
+                  }}>
+                    {cols.map(c => (
+                      <td key={c} style={{ ...td, fontSize: '11px', whiteSpace: 'nowrap', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', color: '#374151' }}>
+                        {row[c] != null ? String(row[c]) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>Sin datos consolidados</div>
+          )}
+        </div>
+      </div>
+
+      {/* Datalake ready message */}
+      <div style={{
+        background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '12px',
+        padding: '20px 24px', textAlign: 'center', marginTop: '16px',
+      }}>
+        <div style={{ fontSize: '20px', marginBottom: '8px' }}>✓</div>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: '#16A34A', marginBottom: '4px' }}>
+          Dataset listo para Datalake / Microsoft Fabric
+        </div>
+        <div style={{ fontSize: '13px', color: '#64748b' }}>
+          {consolidated.total_records} registros de {consolidated.total_files} corredurías unificados en modelo canónico.
+          Exportable a CSV, Parquet o directamente a tu lakehouse.
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function NormalizeDashboard({ data, onBack }) {
   const results = data.results || [data]
   const isMulti = Array.isArray(data.results)
+  const [step, setStep] = useState('analysis') // 'analysis' | 'consolidated'
+  const [consolidated, setConsolidated] = useState(null)
+  const [consolidating, setConsolidating] = useState(false)
+
+  const handleConsolidate = () => {
+    setConsolidating(true)
+    // Build consolidated dataset client-side from normalized_all in each result
+    const allRecords = []
+    const fileSummaries = []
+    const countriesSet = new Set()
+
+    for (const r of results) {
+      if (r.error) {
+        fileSummaries.push({ filename: r.filename, error: r.error })
+        continue
+      }
+      const records = r.normalized_all || []
+      const country = r.detected_country || '??'
+      countriesSet.add(country)
+      for (const rec of records) {
+        allRecords.push({ ...rec, _source_file: r.label || r.filename, _source_country: country })
+      }
+      fileSummaries.push({ filename: r.label || r.filename, country, records: records.length })
+    }
+
+    // Get canonical columns from first successful result
+    const baseCols = results.find(r => !r.error)?.canonical_columns || []
+    const canonicalColumns = [...baseCols, '_source_file', '_source_country']
+
+    setConsolidated({
+      total_files: fileSummaries.length,
+      total_records: allRecords.length,
+      countries: Array.from(countriesSet),
+      file_summaries: fileSummaries,
+      canonical_columns: canonicalColumns,
+      consolidated_preview: allRecords.slice(0, 20),
+    })
+    setConsolidating(false)
+    setStep('consolidated')
+  }
 
   return (
     <div style={cs.page}>
@@ -227,39 +363,94 @@ export default function NormalizeDashboard({ data, onBack }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', color: ORANGE, fontWeight: 700, marginBottom: '6px' }}>
-              Homogeneización — Resultados
+              Homogeneización — {step === 'analysis' ? 'Análisis individual' : 'Dataset consolidado'}
             </div>
             <h1 style={{ fontSize: '26px', fontWeight: 300, margin: 0, color: '#1B2A4A' }}>
-              Normalización <span style={{ fontWeight: 700 }}>de Datos de Corredurías</span>
+              {step === 'analysis'
+                ? <>Normalización <span style={{ fontWeight: 700 }}>de Datos de Corredurías</span></>
+                : <>Dataset <span style={{ fontWeight: 700 }}>Unificado Multi-Correduría</span></>
+              }
             </h1>
           </div>
-          <button onClick={onBack} style={{
-            padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-            border: '1px solid #E2E8F0', background: 'transparent', color: '#64748b', cursor: 'pointer',
-          }}>← Volver a la Landing</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {step === 'consolidated' && (
+              <button onClick={() => setStep('analysis')} style={{
+                padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+                border: '1px solid #E2E8F0', background: 'transparent', color: '#64748b', cursor: 'pointer',
+              }}>← Análisis individual</button>
+            )}
+            <button onClick={onBack} style={{
+              padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
+              border: '1px solid #E2E8F0', background: 'transparent', color: '#64748b', cursor: 'pointer',
+            }}>← Volver a la Landing</button>
+          </div>
         </div>
 
-        {/* Summary cards */}
+        {/* Step indicators */}
         {isMulti && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
             {[
-              { l: 'Ficheros', v: data.total_files, c: '#1B2A4A' },
-              { l: 'Registros totales', v: (data.total_records || 0).toLocaleString('es-ES'), c: '#1B2A4A' },
-              { l: 'Países detectados', v: (data.countries_detected || []).join(', '), c: ORANGE },
-              { l: 'Incidencias calidad', v: data.total_quality_issues || 0, c: (data.total_quality_issues || 0) > 0 ? '#DC2626' : '#16A34A' },
-            ].map(c => (
-              <div key={c.l} style={cs.panel}>
-                <div style={cs.lbl}>{c.l}</div>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: c.c }}>{c.v}</div>
+              { k: 'analysis', l: '1. Análisis individual', icon: '📋' },
+              { k: 'consolidated', l: '2. Dataset consolidado', icon: '🔗' },
+            ].map(s => (
+              <div key={s.k} style={{
+                flex: 1, padding: '12px 16px', borderRadius: '10px', textAlign: 'center',
+                border: `2px solid ${step === s.k ? ORANGE : '#E2E8F0'}`,
+                background: step === s.k ? '#E8721A08' : '#F8F9FA',
+                color: step === s.k ? ORANGE : '#94a3b8',
+                fontWeight: 700, fontSize: '13px',
+              }}>
+                {s.icon} {s.l}
               </div>
             ))}
           </div>
         )}
 
-        {/* Per-file sections */}
-        {results.map((r, i) => (
-          <FileSection key={i} result={r} defaultOpen={i === 0} />
-        ))}
+        {step === 'analysis' && (
+          <>
+            {/* Summary cards */}
+            {isMulti && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                {[
+                  { l: 'Ficheros', v: data.total_files, c: '#1B2A4A' },
+                  { l: 'Registros totales', v: (data.total_records || 0).toLocaleString('es-ES'), c: '#1B2A4A' },
+                  { l: 'Países detectados', v: (data.countries_detected || []).join(', '), c: ORANGE },
+                  { l: 'Incidencias calidad', v: data.total_quality_issues || 0, c: (data.total_quality_issues || 0) > 0 ? '#DC2626' : '#16A34A' },
+                ].map(c => (
+                  <div key={c.l} style={cs.panel}>
+                    <div style={cs.lbl}>{c.l}</div>
+                    <div style={{ fontSize: '22px', fontWeight: 700, color: c.c }}>{c.v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Per-file sections */}
+            {results.map((r, i) => (
+              <FileSection key={i} result={r} defaultOpen={i === 0} />
+            ))}
+
+            {/* Consolidate button */}
+            {isMulti && (
+              <button
+                onClick={handleConsolidate}
+                disabled={consolidating}
+                style={{
+                  width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
+                  background: ORANGE, color: '#fff', fontSize: '16px', fontWeight: 700,
+                  cursor: consolidating ? 'wait' : 'pointer', marginTop: '20px',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {consolidating ? 'Consolidando...' : 'Consolidar en dataset único →'}
+              </button>
+            )}
+          </>
+        )}
+
+        {step === 'consolidated' && consolidated && (
+          <ConsolidatedView consolidated={consolidated} />
+        )}
 
         <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
           Motor de Homogeneización · Sabseg Demo

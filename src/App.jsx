@@ -107,7 +107,7 @@ export default function App() {
       )}
       {screen === 'norm-processing' && <NormalizeProcessing />}
       {screen === 'norm-dashboard' && data && (
-        <NormalizeDashboard data={data} onBack={goLanding} />
+        <NormalizeDashboard data={data} onBack={goLanding} apiUrl={API_URL} apiCall={apiCall} />
       )}
     </>
   )
