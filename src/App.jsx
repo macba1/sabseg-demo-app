@@ -9,6 +9,16 @@ import NormalizeDashboard from './components/NormalizeDashboard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+async function apiCall(url, options = {}) {
+  const res = await fetch(url, options)
+  if (!res.ok) {
+    let msg = `Error ${res.status}`
+    try { const body = await res.json(); msg = body.detail || msg } catch {}
+    throw new Error(msg)
+  }
+  return res.json()
+}
+
 export default function App() {
   const [screen, setScreen] = useState('landing')
   const [data, setData] = useState(null)
@@ -30,9 +40,7 @@ export default function App() {
         formData.append('file_c', fileC)
         endpoint = `${API_URL}/api/reconcile-triangular`
       }
-      const res = await fetch(endpoint, { method: 'POST', body: formData })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Error procesando ficheros') }
-      setData(await res.json())
+      setData(await apiCall(endpoint, { method: 'POST', body: formData }))
       setScreen('rec-dashboard')
     } catch (e) { setError(e.message); setScreen('rec-upload') }
   }
@@ -40,18 +48,16 @@ export default function App() {
   const handleDemo = async () => {
     setScreen('rec-processing'); setError(null)
     try {
-      const res = await fetch(`${API_URL}/api/demo`, { method: 'POST' })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Error cargando demo') }
-      setData(await res.json()); setScreen('rec-dashboard')
+      setData(await apiCall(`${API_URL}/api/demo`, { method: 'POST' }))
+      setScreen('rec-dashboard')
     } catch (e) { setError(e.message); setScreen('rec-upload') }
   }
 
   const handleDemoTriangular = async () => {
     setScreen('rec-processing'); setError(null)
     try {
-      const res = await fetch(`${API_URL}/api/demo?triangular=true`, { method: 'POST' })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Error cargando demo triangular') }
-      setData(await res.json()); setScreen('rec-dashboard')
+      setData(await apiCall(`${API_URL}/api/demo?triangular=true`, { method: 'POST' }))
+      setScreen('rec-dashboard')
     } catch (e) { setError(e.message); setScreen('rec-upload') }
   }
 
@@ -62,18 +68,16 @@ export default function App() {
     try {
       const formData = new FormData()
       files.forEach(f => formData.append('files', f))
-      const res = await fetch(`${API_URL}/api/normalize-batch`, { method: 'POST', body: formData })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Error procesando ficheros') }
-      setData(await res.json()); setScreen('norm-dashboard')
+      setData(await apiCall(`${API_URL}/api/normalize-batch`, { method: 'POST', body: formData }))
+      setScreen('norm-dashboard')
     } catch (e) { setError(e.message); setScreen('norm-upload') }
   }
 
   const handleNormDemo = async () => {
     setScreen('norm-processing'); setError(null)
     try {
-      const res = await fetch(`${API_URL}/api/normalize-demo`, { method: 'POST' })
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Error cargando demo') }
-      setData(await res.json()); setScreen('norm-dashboard')
+      setData(await apiCall(`${API_URL}/api/normalize-demo`, { method: 'POST' }))
+      setScreen('norm-dashboard')
     } catch (e) { setError(e.message); setScreen('norm-upload') }
   }
 
