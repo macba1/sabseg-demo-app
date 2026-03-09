@@ -15,27 +15,23 @@ const sevColors = {
   Baja: { bg: '#f0fdf4', text: '#16A34A', border: '#86efac' },
 }
 const typeColors = {
-  // A vs B
   'Registro faltante en contabilidad': '#DC2626',
   'Duplicado en contabilidad': '#ea580c',
   'Suplemento no reflejado': '#F59E0B',
   'Comisión incorrecta': '#7c3aed',
   'Diferencia de timing': '#0e7490',
   'Redondeo': '#64748b',
-  // A vs C (liquidaciones — blue family)
   'Póliza no liquidada por aseguradora': '#2563eb',
   'Diferencia prima liquidada': '#1d4ed8',
   'Comisión liquidada incorrecta': '#4f46e5',
 }
 const typeIcons = {
-  // A vs B
   'Registro faltante en contabilidad': '∅',
   'Duplicado en contabilidad': '⊕',
   'Suplemento no reflejado': 'Δ',
   'Comisión incorrecta': '%',
   'Diferencia de timing': '⏱',
   'Redondeo': '≈',
-  // A vs C (liquidaciones)
   'Póliza no liquidada por aseguradora': '⊘',
   'Diferencia prima liquidada': '↕',
   'Comisión liquidada incorrecta': '€',
@@ -142,19 +138,18 @@ export default function Dashboard({ data, onReset }) {
                 padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
                 border: `1px solid ${view === v ? ORANGE : '#E2E8F0'}`,
                 background: view === v ? '#E8721A15' : '#F8F9FA',
-                color: view === v ? ORANGE : '#64748b', cursor: 'pointer', textTransform: 'capitalize',
+                color: view === v ? ORANGE : '#64748b', cursor: 'pointer',
               }}>{v === 'cuadre' ? 'Estado del cuadre' : 'Detalle partidas'}</button>
             ))}
             <button onClick={onReset} style={{
               padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
               border: '1px solid #E2E8F0', background: 'transparent', color: '#64748b', cursor: 'pointer',
-            }}>Nuevo análisis</button>
+            }}>← Volver</button>
           </div>
         </div>
 
         {/* ═══ CUADRE VIEW ═══ */}
         {view === 'cuadre' && <>
-          {/* Status banner */}
           <div style={{
             background: cuadra ? '#f0fdf4' : '#fef2f2',
             border: `2px solid ${cuadra ? '#86efac' : '#fca5a5'}`,
@@ -179,7 +174,6 @@ export default function Dashboard({ data, onReset }) {
             </div>
           </div>
 
-          {/* Main numbers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
             {[
               { l: 'Estadística de Venta', v: fmt(data.prima_total_produccion), s: `${fmtInt(data.registros_produccion)} registros` },
@@ -194,7 +188,6 @@ export default function Dashboard({ data, onReset }) {
             ))}
           </div>
 
-          {/* Progress */}
           <div style={cs.panel}>
             <div style={cs.lbl}>Progreso de resolución</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '12px' }}>
@@ -219,7 +212,6 @@ export default function Dashboard({ data, onReset }) {
             </div>
           </div>
 
-          {/* Type breakdown */}
           <div style={cs.panel}>
             <div style={cs.lbl}>Partidas por tipo</div>
             {[...new Set(items.map(d => d.tipo))].map(tipo => {
@@ -248,7 +240,6 @@ export default function Dashboard({ data, onReset }) {
 
         {/* ═══ DETAIL VIEW ═══ */}
         {view === 'detalle' && <>
-          {/* Quick stats */}
           <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
             {[
               { l: 'Pendientes', v: pending.length, c: '#DC2626' },
@@ -262,7 +253,6 @@ export default function Dashboard({ data, onReset }) {
             ))}
           </div>
 
-          {/* Filters */}
           <div style={{ display: 'flex', gap: '10px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
             <select value={filterType} onChange={e => setFilterType(e.target.value)} style={cs.sel}>
               {tipos.map(t => <option key={t}>{t}</option>)}
@@ -273,7 +263,6 @@ export default function Dashboard({ data, onReset }) {
             <div style={{ fontSize: '13px', color: '#64748b', marginLeft: 'auto' }}>{filtered.length} partida{filtered.length !== 1 ? 's' : ''}</div>
           </div>
 
-          {/* List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {filtered.map(d => {
               const isOpen = expanded === d.id
@@ -288,15 +277,12 @@ export default function Dashboard({ data, onReset }) {
                   borderRadius: '10px', padding: '14px 18px', cursor: 'pointer',
                   opacity: isRes && !isOpen ? 0.7 : 1, transition: 'all 0.2s ease',
                 }}>
-                  {/* Row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     {isRes && <span style={{ color: resLabels[d.resolucion]?.color || '#16A34A' }}>✓</span>}
                     <span style={{ fontSize: '14px', color: tc, fontWeight: 700, width: '20px', textAlign: 'center' }}>{typeIcons[d.tipo] || '?'}</span>
                     <Badge text={d.severidad} colors={sc} />
                     {d.fuente === 'Liquidación aseguradora' && (
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '1px 6px' }}>
-                        LIQ
-                      </span>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '1px 6px' }}>LIQ</span>
                     )}
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#1B2A4A' }}>{d.poliza}</span>
                     <span style={{ fontSize: '12px', color: '#64748b' }}>{d.aseguradora} · {d.ramo}</span>
@@ -312,7 +298,6 @@ export default function Dashboard({ data, onReset }) {
                     )}
                   </div>
 
-                  {/* Expanded */}
                   {isOpen && (
                     <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: `1px solid ${tc}22` }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
@@ -336,6 +321,7 @@ export default function Dashboard({ data, onReset }) {
                           </span>
                         </div>
                       )}
+
                       <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '12px 14px', marginBottom: '8px' }}>
                         <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.5px', color: tc, marginBottom: '4px', fontWeight: 700 }}>Análisis</div>
                         <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>{d.explicacion}</div>
@@ -376,7 +362,7 @@ export default function Dashboard({ data, onReset }) {
         </>}
 
         <div style={{ marginTop: '32px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
-          Motor de Reconciliación Contable · Demo
+          Motor de Reconciliación Contable · Sabseg Demo
         </div>
       </div>
     </div>

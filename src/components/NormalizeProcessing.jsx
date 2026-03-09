@@ -3,22 +3,22 @@ import Logo from './Logo'
 
 const steps = [
   'Leyendo ficheros...',
-  'Detectando columnas y estructura...',
-  'Cruzando registros por referencia...',
-  'Buscando duplicados...',
-  'Comparando primas y comisiones...',
-  'Analizando diferencias de timing...',
-  'Clasificando discrepancias...',
+  'Detectando idioma y país de origen...',
+  'Analizando esquema de columnas...',
+  'Mapeando campos al modelo canónico...',
+  'Normalizando valores...',
+  'Validando calidad de datos...',
+  'Detectando duplicados y anomalías...',
   'Generando informe...',
 ]
 
-export default function Processing() {
+export default function NormalizeProcessing() {
   const [step, setStep] = useState(0)
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStep((s) => (s < steps.length - 1 ? s + 1 : s))
-    }, 800)
+      setStep(s => (s < steps.length - 1 ? s + 1 : s))
+    }, 700)
     return () => clearInterval(interval)
   }, [])
 
@@ -40,7 +40,7 @@ export default function Processing() {
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
         <div style={{ fontSize: '20px', fontWeight: 600, color: '#1B2A4A', marginBottom: '8px' }}>
-          Analizando cierre contable
+          Homogeneizando datos
         </div>
         <div style={{ fontSize: '14px', color: '#E8721A', marginBottom: '24px', minHeight: '20px' }}>
           {steps[step]}
