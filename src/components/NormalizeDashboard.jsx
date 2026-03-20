@@ -310,48 +310,26 @@ function ConsolidatedView({ consolidated }) {
   )
 }
 
-export default function NormalizeDashboard({ data, onBack }) {
+export default function NormalizeDashboard({ data, onBack, onConsolidate }) {
   const results = data.results || [data]
   const isMulti = Array.isArray(data.results)
   const [step, setStep] = useState('analysis') // 'analysis' | 'consolidated'
   const [consolidated, setConsolidated] = useState(null)
   const [consolidating, setConsolidating] = useState(false)
+  const [consolidateError, setConsolidateError] = useState(null)
 
-  const handleConsolidate = () => {
+  const handleConsolidate = async () => {
     setConsolidating(true)
-    // Build consolidated dataset client-side from normalized_all in each result
-    const allRecords = []
-    const fileSummaries = []
-    const countriesSet = new Set()
-
-    for (const r of results) {
-      if (r.error) {
-        fileSummaries.push({ filename: r.filename, error: r.error })
-        continue
-      }
-      const records = r.normalized_all || []
-      const country = r.detected_country || '??'
-      countriesSet.add(country)
-      for (const rec of records) {
-        allRecords.push({ ...rec, _source_file: r.label || r.filename, _source_country: country })
-      }
-      fileSummaries.push({ filename: r.label || r.filename, country, records: records.length })
+    setConsolidateError(null)
+    try {
+      const result = await onConsolidate()
+      setConsolidated(result)
+      setStep('consolidated')
+    } catch (e) {
+      setConsolidateError(e.message)
+    } finally {
+      setConsolidating(false)
     }
-
-    // Get canonical columns from first successful result
-    const baseCols = results.find(r => !r.error)?.canonical_columns || []
-    const canonicalColumns = [...baseCols, '_source_file', '_source_country']
-
-    setConsolidated({
-      total_files: fileSummaries.length,
-      total_records: allRecords.length,
-      countries: Array.from(countriesSet),
-      file_summaries: fileSummaries,
-      canonical_columns: canonicalColumns,
-      consolidated_preview: allRecords.slice(0, 20),
-    })
-    setConsolidating(false)
-    setStep('consolidated')
   }
 
   return (
@@ -432,18 +410,25 @@ export default function NormalizeDashboard({ data, onBack }) {
 
             {/* Consolidate button */}
             {isMulti && (
-              <button
-                onClick={handleConsolidate}
-                disabled={consolidating}
-                style={{
-                  width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
-                  background: ORANGE, color: '#fff', fontSize: '16px', fontWeight: 700,
-                  cursor: consolidating ? 'wait' : 'pointer', marginTop: '20px',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                {consolidating ? 'Consolidando...' : 'Consolidar en dataset único →'}
-              </button>
+              <>
+                {consolidateError && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '10px', padding: '12px 16px', marginTop: '16px', fontSize: '13px', color: '#DC2626' }}>
+                    {consolidateError}
+                  </div>
+                )}
+                <button
+                  onClick={handleConsolidate}
+                  disabled={consolidating}
+                  style={{
+                    width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
+                    background: consolidating ? '#94a3b8' : ORANGE, color: '#fff', fontSize: '16px', fontWeight: 700,
+                    cursor: consolidating ? 'wait' : 'pointer', marginTop: '20px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  {consolidating ? 'Consolidando datos…' : 'Consolidar en dataset único →'}
+                </button>
+              </>
             )}
           </>
         )}

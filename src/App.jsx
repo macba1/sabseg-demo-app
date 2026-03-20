@@ -23,8 +23,10 @@ export default function App() {
   const [screen, setScreen] = useState('landing')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const [normMode, setNormMode] = useState(null) // 'demo' | 'upload'
+  const [normFiles, setNormFiles] = useState(null) // stored File objects for on-demand consolidation
 
-  const goLanding = () => { setScreen('landing'); setData(null); setError(null) }
+  const goLanding = () => { setScreen('landing'); setData(null); setError(null); setNormMode(null); setNormFiles(null) }
 
   // ─── Reconciliation flow ───────────────────────────────────────────
 
@@ -65,6 +67,7 @@ export default function App() {
 
   const handleNormAnalyze = async (files) => {
     setScreen('norm-processing'); setError(null)
+    setNormMode('upload'); setNormFiles(files)
     try {
       const formData = new FormData()
       files.forEach(f => formData.append('files', f))
@@ -75,10 +78,21 @@ export default function App() {
 
   const handleNormDemo = async () => {
     setScreen('norm-processing'); setError(null)
+    setNormMode('demo'); setNormFiles(null)
     try {
       setData(await apiCall(`${API_URL}/api/normalize-demo`, { method: 'POST' }))
       setScreen('norm-dashboard')
     } catch (e) { setError(e.message); setScreen('norm-upload') }
+  }
+
+  const handleConsolidate = async () => {
+    if (normMode === 'demo') {
+      return apiCall(`${API_URL}/api/normalize-demo-consolidate`, { method: 'POST' })
+    } else {
+      const formData = new FormData()
+      normFiles.forEach(f => formData.append('files', f))
+      return apiCall(`${API_URL}/api/normalize-consolidate`, { method: 'POST', body: formData })
+    }
   }
 
   // ─── Routing ───────────────────────────────────────────────────────
@@ -107,7 +121,7 @@ export default function App() {
       )}
       {screen === 'norm-processing' && <NormalizeProcessing />}
       {screen === 'norm-dashboard' && data && (
-        <NormalizeDashboard data={data} onBack={goLanding} apiUrl={API_URL} apiCall={apiCall} />
+        <NormalizeDashboard data={data} onBack={goLanding} onConsolidate={handleConsolidate} />
       )}
     </>
   )
