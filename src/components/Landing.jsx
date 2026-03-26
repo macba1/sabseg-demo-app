@@ -31,6 +31,20 @@ const cards = [
     title: 'Homogeneización de Datos',
     sub: 'Normalización automática de datos de corredurías adquiridas',
   },
+  {
+    id: 'data-quality',
+    icon: (
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="6" y="4" width="24" height="28" rx="3" stroke="#1B2A4A" strokeWidth="2" />
+        <path d="M12 14h12M12 19h8M12 24h10" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="27" cy="27" r="7" fill="#FFFFFF" stroke={ORANGE} strokeWidth="2" />
+        <path d="M25 27l1.5 1.5L29 25" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M12 9h4" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    ),
+    title: 'Data Quality',
+    sub: 'Validación automática de ficheros de recibos',
+  },
 ]
 
 export default function Landing({ onSelect }) {

@@ -7,6 +7,8 @@ import SabsegDashboard from './components/SabsegDashboard'
 import NormalizeUpload from './components/NormalizeUpload'
 import NormalizeProcessing from './components/NormalizeProcessing'
 import NormalizeDashboard from './components/NormalizeDashboard'
+import DataQualityUpload from './components/DataQualityUpload'
+import DataQualityDashboard from './components/DataQualityDashboard'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -104,6 +106,26 @@ export default function App() {
     }
   }
 
+  // ─── Data Quality flow ────────────────────────────────────────────
+
+  const handleDQDemo = async () => {
+    setScreen('dq-processing'); setError(null)
+    try {
+      setData(await apiCall(`${API_URL}/api/data-quality-demo`, { method: 'POST' }))
+      setScreen('dq-dashboard')
+    } catch (e) { setError(e.message); setScreen('dq-upload') }
+  }
+
+  const handleDQUpload = async (files) => {
+    setScreen('dq-processing'); setError(null)
+    try {
+      const formData = new FormData()
+      files.forEach(f => formData.append('files', f))
+      setData(await apiCall(`${API_URL}/api/data-quality`, { method: 'POST', body: formData }))
+      setScreen('dq-dashboard')
+    } catch (e) { setError(e.message); setScreen('dq-upload') }
+  }
+
   // ─── Routing ───────────────────────────────────────────────────────
 
   return (
@@ -111,7 +133,9 @@ export default function App() {
       {screen === 'landing' && (
         <Landing onSelect={id => {
           setError(null); setData(null)
-          setScreen(id === 'reconciliation' ? 'rec-upload' : 'norm-upload')
+          if (id === 'reconciliation') setScreen('rec-upload')
+          else if (id === 'data-quality') setScreen('dq-upload')
+          else setScreen('norm-upload')
         }} />
       )}
 
@@ -134,6 +158,15 @@ export default function App() {
       {screen === 'norm-processing' && <NormalizeProcessing />}
       {screen === 'norm-dashboard' && data && (
         <NormalizeDashboard data={data} onBack={goLanding} onConsolidate={handleConsolidate} />
+      )}
+
+      {/* Data Quality */}
+      {screen === 'dq-upload' && (
+        <DataQualityUpload onUpload={handleDQUpload} onDemo={handleDQDemo} onBack={goLanding} error={error} />
+      )}
+      {screen === 'dq-processing' && <Processing />}
+      {screen === 'dq-dashboard' && data && (
+        <DataQualityDashboard data={data} onBack={goLanding} />
       )}
     </>
   )
