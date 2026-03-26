@@ -3,6 +3,7 @@ import Landing from './components/Landing'
 import Upload from './components/Upload'
 import Processing from './components/Processing'
 import Dashboard from './components/Dashboard'
+import SabsegDashboard from './components/SabsegDashboard'
 import NormalizeUpload from './components/NormalizeUpload'
 import NormalizeProcessing from './components/NormalizeProcessing'
 import NormalizeDashboard from './components/NormalizeDashboard'
@@ -63,6 +64,14 @@ export default function App() {
     } catch (e) { setError(e.message); setScreen('rec-upload') }
   }
 
+  const handleDemoSabseg = async () => {
+    setScreen('rec-processing'); setError(null)
+    try {
+      setData(await apiCall(`${API_URL}/api/demo-sabseg`, { method: 'POST' }))
+      setScreen('sabseg-dashboard')
+    } catch (e) { setError(e.message); setScreen('rec-upload') }
+  }
+
   // ─── Normalization flow ────────────────────────────────────────────
 
   const handleNormAnalyze = async (files) => {
@@ -108,11 +117,14 @@ export default function App() {
 
       {/* Reconciliation */}
       {screen === 'rec-upload' && (
-        <Upload onUpload={handleUpload} onDemo={handleDemo} onDemoTriangular={handleDemoTriangular} onBack={goLanding} error={error} />
+        <Upload onUpload={handleUpload} onDemo={handleDemo} onDemoTriangular={handleDemoTriangular} onDemoSabseg={handleDemoSabseg} onBack={goLanding} error={error} />
       )}
       {screen === 'rec-processing' && <Processing />}
       {screen === 'rec-dashboard' && data && (
         <Dashboard data={data} onReset={goLanding} />
+      )}
+      {screen === 'sabseg-dashboard' && data && (
+        <SabsegDashboard data={data} onBack={goLanding} />
       )}
 
       {/* Normalization */}

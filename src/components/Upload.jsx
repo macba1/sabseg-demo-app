@@ -74,7 +74,7 @@ function DropZone({ label, file, onFile, accept, optional }) {
   )
 }
 
-export default function Upload({ onUpload, onDemo, onDemoTriangular, onBack, error }) {
+export default function Upload({ onUpload, onDemo, onDemoTriangular, onDemoSabseg, onBack, error }) {
   const [fileA, setFileA] = useState(null)
   const [fileB, setFileB] = useState(null)
   const [fileC, setFileC] = useState(null)
@@ -119,6 +119,16 @@ export default function Upload({ onUpload, onDemo, onDemoTriangular, onBack, err
         {onDemoTriangular && (
           <button style={s.demoTriangular} onClick={onDemoTriangular}>
             Ver demo con cuadre triangular (incluye liquidaciones)
+          </button>
+        )}
+        {onDemoSabseg && (
+          <button onClick={onDemoSabseg} style={{
+            width: '100%', padding: '12px', borderRadius: '10px',
+            border: `1px solid ${ORANGE}`, background: '#E8721A10',
+            color: ORANGE, cursor: 'pointer', fontSize: '13px',
+            fontWeight: 600, marginTop: '8px',
+          }}>
+            Ver demo con datos reales de Sabseg
           </button>
         )}
       </div>
