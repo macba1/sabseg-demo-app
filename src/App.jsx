@@ -166,7 +166,7 @@ export default function App() {
       )}
       {screen === 'dq-processing' && <Processing />}
       {screen === 'dq-dashboard' && data && (
-        <DataQualityDashboard data={data} onBack={goLanding} />
+        <DataQualityDashboard data={data} onBack={goLanding} apiUrl={API_URL} apiCall={apiCall} />
       )}
     </>
   )

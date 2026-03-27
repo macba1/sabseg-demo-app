@@ -290,8 +290,160 @@ function ArrentaComparison({ comparison }) {
   )
 }
 
-export default function DataQualityDashboard({ data, onBack }) {
+function CorrectionsResult({ corrections }) {
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#16A34A', fontWeight: 700, marginBottom: '12px' }}>
+        Correcciones aplicadas
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        {[
+          { l: 'Total corregido', v: corrections.total_corrections, c: '#16A34A' },
+          { l: 'Pendiente manual', v: corrections.total_remaining, c: corrections.total_remaining > 0 ? '#DC2626' : '#16A34A' },
+          { l: 'Ficheros', v: corrections.total_files, c: '#1B2A4A' },
+        ].map(c => (
+          <div key={c.l} style={cs.panel}>
+            <div style={cs.lbl}>{c.l}</div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: c.c }}>{c.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {(corrections.results || []).map((r, i) => (
+        <div key={i} style={{ ...cs.panel, padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: r.total_remaining > 0 ? '#F59E0B' : '#16A34A' }} />
+            <div style={{ fontSize: '14px', fontWeight: 700, color: '#1B2A4A' }}>{r.correduria || r.filename}</div>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>{r.total_records} registros</span>
+          </div>
+
+          {(r.corrections_applied || []).length > 0 && (
+            <div style={{ marginBottom: '10px' }}>
+              {r.corrections_applied.map((c, j) => (
+                <div key={j} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px',
+                  background: '#f0fdf4', borderRadius: '6px', border: '1px solid #86efac', marginBottom: '6px',
+                }}>
+                  <span style={{ color: '#16A34A', fontWeight: 700, fontSize: '13px' }}>+{c.cantidad}</span>
+                  <span style={{ fontSize: '13px', color: '#1B2A4A' }}>{c.tipo}</span>
+                  <span style={{ fontSize: '11px', color: '#64748b', marginLeft: 'auto' }}>{c.campo}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(r.remaining_issues || []).length > 0 && (
+            <div>
+              {r.remaining_issues.map((ri, j) => (
+                <div key={j} style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px',
+                  background: '#fef2f2', borderRadius: '6px', border: '1px solid #fca5a5', marginBottom: '6px',
+                }}>
+                  <span style={{ color: '#DC2626', fontWeight: 700, fontSize: '13px' }}>{ri.cantidad}</span>
+                  <span style={{ fontSize: '13px', color: '#1B2A4A' }}>{ri.tipo}</span>
+                  <span style={{ fontSize: '11px', color: '#64748b' }}>— revision manual</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(r.corrections_applied || []).length === 0 && (r.remaining_issues || []).length === 0 && (
+            <div style={{ fontSize: '13px', color: '#16A34A', fontWeight: 600 }}>Sin correcciones necesarias</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ReportsResult({ reports }) {
+  const [copied, setCopied] = useState(null)
+
+  const handleCopy = (idx, text) => {
+    navigator.clipboard.writeText(text)
+    setCopied(idx)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  return (
+    <div style={{ marginTop: '16px' }}>
+      <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#7c3aed', fontWeight: 700, marginBottom: '12px' }}>
+        Informes para corredurias
+      </div>
+
+      {(reports.reports || []).map((r, i) => (
+        <div key={i} style={{ ...cs.panel, padding: '20px', borderLeft: r.tiene_incidencias ? '4px solid #F59E0B' : '4px solid #16A34A' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: '#1B2A4A' }}>{r.correduria}</span>
+            {r.tiene_incidencias ? (
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#F59E0B', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '4px', padding: '1px 8px' }}>
+                {r.total_incidencias} incidencia{r.total_incidencias !== 1 ? 's' : ''}
+              </span>
+            ) : (
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#16A34A', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '4px', padding: '1px 8px' }}>
+                OK
+              </span>
+            )}
+          </div>
+
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#64748b', marginBottom: '4px', fontWeight: 700 }}>Asunto</div>
+            <div style={{ fontSize: '13px', color: '#1B2A4A', fontWeight: 600 }}>{r.asunto_email}</div>
+          </div>
+
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#64748b', marginBottom: '4px', fontWeight: 700 }}>Cuerpo del email</div>
+            <pre style={{
+              fontSize: '12px', color: '#374151', lineHeight: 1.6, background: '#FFFFFF',
+              border: '1px solid #E2E8F0', borderRadius: '8px', padding: '14px 16px',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', margin: 0,
+            }}>{r.cuerpo_email}</pre>
+          </div>
+
+          <button
+            onClick={() => handleCopy(i, `Asunto: ${r.asunto_email}\n\n${r.cuerpo_email}`)}
+            style={{
+              padding: '8px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 700,
+              border: `1px solid ${copied === i ? '#86efac' : '#e9d5ff'}`,
+              background: copied === i ? '#f0fdf4' : '#faf5ff',
+              color: copied === i ? '#16A34A' : '#7c3aed',
+              cursor: 'pointer', transition: 'all 0.2s ease',
+            }}
+          >
+            {copied === i ? 'Copiado!' : 'Copiar email'}
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default function DataQualityDashboard({ data, onBack, apiUrl, apiCall }) {
   const results = data.results || []
+  const [correctionsData, setCorrectionsData] = useState(null)
+  const [reportsData, setReportsData] = useState(null)
+  const [loadingCorrections, setLoadingCorrections] = useState(false)
+  const [loadingReports, setLoadingReports] = useState(false)
+  const [errorMsg, setErrorMsg] = useState(null)
+
+  const handleApplyCorrections = async () => {
+    setLoadingCorrections(true); setErrorMsg(null)
+    try {
+      const result = await apiCall(`${apiUrl}/api/apply-corrections-demo`, { method: 'POST' })
+      setCorrectionsData(result)
+    } catch (e) { setErrorMsg(e.message) }
+    finally { setLoadingCorrections(false) }
+  }
+
+  const handleGenerateReports = async () => {
+    setLoadingReports(true); setErrorMsg(null)
+    try {
+      const result = await apiCall(`${apiUrl}/api/generate-reports-demo`, { method: 'POST' })
+      setReportsData(result)
+    } catch (e) { setErrorMsg(e.message) }
+    finally { setLoadingReports(false) }
+  }
 
   return (
     <div style={cs.page}>
@@ -343,6 +495,47 @@ export default function DataQualityDashboard({ data, onBack }) {
         {data.arrenta_comparison && (
           <ArrentaComparison comparison={data.arrenta_comparison} />
         )}
+
+        {/* Action buttons */}
+        {errorMsg && (
+          <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '10px', padding: '12px 16px', marginTop: '16px', fontSize: '13px', color: '#DC2626' }}>
+            {errorMsg}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '20px', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleApplyCorrections}
+            disabled={loadingCorrections}
+            style={{
+              flex: 1, padding: '14px 20px', borderRadius: '10px', border: 'none',
+              background: loadingCorrections ? '#94a3b8' : '#16A34A', color: '#fff',
+              fontSize: '14px', fontWeight: 700, cursor: loadingCorrections ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease', minWidth: '240px',
+            }}
+          >
+            {loadingCorrections ? 'Aplicando correcciones...' : 'Aplicar correcciones automaticas'}
+          </button>
+
+          <button
+            onClick={handleGenerateReports}
+            disabled={loadingReports}
+            style={{
+              flex: 1, padding: '14px 20px', borderRadius: '10px', border: 'none',
+              background: loadingReports ? '#94a3b8' : '#7c3aed', color: '#fff',
+              fontSize: '14px', fontWeight: 700, cursor: loadingReports ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease', minWidth: '240px',
+            }}
+          >
+            {loadingReports ? 'Generando informes...' : 'Generar informes para corredurias'}
+          </button>
+        </div>
+
+        {/* Corrections result */}
+        {correctionsData && <CorrectionsResult corrections={correctionsData} />}
+
+        {/* Reports result */}
+        {reportsData && <ReportsResult reports={reportsData} />}
 
         <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12px', color: '#94a3b8' }}>
           Motor de Data Quality · Sabseg
