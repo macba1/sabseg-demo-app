@@ -8,6 +8,7 @@ import RecResults from './components/rec/RecResults'
 import DQWorkspace from './components/dq/DQWorkspace'
 import DQResults from './components/dq/DQResults'
 import ProcessingSpinner from './components/shared/ProcessingSpinner'
+import AgentPanel from './components/shared/AgentPanel'
 import ErrorBanner from './components/shared/ErrorBanner'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -58,7 +59,8 @@ export default function App() {
   const handleRunReconciliation = async () => {
     setScreen('rec-processing'); setError(null)
     try {
-      setData(await apiCall(`${API_URL}/api/demo-sabseg`, { method: 'POST' }))
+      const result = await apiCall(`${API_URL}/api/demo-sabseg-logged`, { method: 'POST' })
+      setData(result)
       setScreen('rec-results')
     } catch (e) {
       setError(e.message)
@@ -71,7 +73,8 @@ export default function App() {
   const handleDQValidateAll = async () => {
     setScreen('dq-processing'); setError(null)
     try {
-      setData(await apiCall(`${API_URL}/api/data-quality-demo`, { method: 'POST' }))
+      const result = await apiCall(`${API_URL}/api/data-quality-demo-logged`, { method: 'POST' })
+      setData(result)
       setScreen('dq-results')
     } catch (e) {
       setError(e.message)
@@ -86,7 +89,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: colors.bg, minHeight: '100vh' }}>
       <Header currentSection={currentSection} onNavigate={handleNavigate} />
-      <main style={{ paddingTop: '56px', transition: 'opacity 0.2s', opacity: isProcessing ? 0.6 : 1 }}>
+      <main style={{ paddingTop: '56px' }}>
         {error && !isProcessing && (
           <div style={{ maxWidth: '1000px', margin: '16px auto 0', padding: '0 32px' }}>
             <ErrorBanner message={error} onDismiss={() => setError(null)} />
@@ -106,6 +109,11 @@ export default function App() {
         )}
         {screen === 'rec-processing' && <ProcessingSpinner message="Ejecutando reconciliación..." />}
         {screen === 'rec-results' && data && (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px 0' }}>
+            <AgentPanel entries={data.agent_log} qaReport={data.qa_report} defaultExpanded={false} />
+          </div>
+        )}
+        {screen === 'rec-results' && data && (
           <RecResults data={data} onBack={() => setScreen('rec-workspace')} />
         )}
 
@@ -114,6 +122,11 @@ export default function App() {
           <DQWorkspace onValidateAll={handleDQValidateAll} onBack={goLanding} />
         )}
         {screen === 'dq-processing' && <ProcessingSpinner message="Validando ficheros..." />}
+        {screen === 'dq-results' && data && (
+          <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 32px 0' }}>
+            <AgentPanel entries={data.agent_log} qaReport={data.qa_report} defaultExpanded={false} />
+          </div>
+        )}
         {screen === 'dq-results' && data && (
           <DQResults data={data} onBack={() => setScreen('dq-workspace')} apiUrl={API_URL} apiCall={apiCall} />
         )}
