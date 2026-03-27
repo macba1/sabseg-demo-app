@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { colors, shadows } from '../../theme'
 
 function ConfidenceBadge({ qaReport }) {
@@ -29,9 +29,6 @@ function ConfidenceBadge({ qaReport }) {
 
 function EntryRow({ entry, visible }) {
   const hasData = entry.data && typeof entry.data === 'object'
-  const dataEntries = hasData
-    ? (Array.isArray(entry.data) ? entry.data : Object.entries(entry.data))
-    : null
 
   return (
     <div style={{
@@ -52,7 +49,7 @@ function EntryRow({ entry, visible }) {
           {entry.detail}
         </span>
       </div>
-      {hasData && dataEntries && (
+      {hasData && (
         <div style={{ marginLeft: '188px', paddingTop: '2px' }}>
           {Array.isArray(entry.data)
             ? entry.data.map((item, i) => (
@@ -72,38 +69,105 @@ function EntryRow({ entry, visible }) {
   )
 }
 
-export default function AgentPanel({ entries, qaReport, defaultExpanded = true }) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-  const [visibleCount, setVisibleCount] = useState(0)
-  const bottomRef = useRef(null)
-  const allShown = entries && visibleCount >= entries.length
+const SIMULATED_REC = [
+  { icon: '🔵', agent_label: 'Orquestador', detail: 'Iniciando proceso...' },
+  { icon: '🟢', agent_label: 'Agente Ingestor', detail: 'Leyendo ficheros...' },
+  { icon: '🟢', agent_label: 'Agente Ingestor', detail: 'Procesando datos...' },
+  { icon: '🟢', agent_label: 'Agente Detector', detail: 'Analizando estructura...' },
+  { icon: '🟢', agent_label: 'Agente Matching', detail: 'Cruzando datos...' },
+  { icon: '🟡', agent_label: 'Agente QA', detail: 'Verificando calidad...' },
+]
 
-  // Animate entries appearing one by one
+const SIMULATED_DQ = [
+  { icon: '🔵', agent_label: 'Orquestador', detail: 'Iniciando proceso...' },
+  { icon: '🟢', agent_label: 'Agente Ingestor', detail: 'Leyendo ficheros...' },
+  { icon: '🟢', agent_label: 'Agente Ingestor', detail: 'Procesando datos...' },
+  { icon: '🟢', agent_label: 'Agente Validador Estructura', detail: 'Analizando estructura...' },
+  { icon: '🟢', agent_label: 'Agente Validador Datos', detail: 'Aplicando reglas de validación...' },
+  { icon: '🟡', agent_label: 'Agente QA', detail: 'Verificando calidad...' },
+]
+
+/**
+ * AgentPanel — two-phase display:
+ *
+ * Phase 1 (loading=true, entries=null): show simulated lines every 800ms
+ * Phase 2 (entries provided): replace simulated with real, animate at 300ms
+ *
+ * Props:
+ *  - entries: real agent_log array (null while loading)
+ *  - qaReport: QA report object
+ *  - loading: whether API call is in progress
+ *  - variant: 'rec' | 'dq' (picks simulated lines)
+ *  - onAnimationDone: callback when all real entries have been shown
+ */
+export default function AgentPanel({ entries, qaReport, loading, variant = 'rec', onAnimationDone }) {
+  const [expanded, setExpanded] = useState(true)
+  const [simCount, setSimCount] = useState(0)
+  const [realCount, setRealCount] = useState(0)
+  const [phase, setPhase] = useState('simulated') // 'simulated' | 'real' | 'done'
+  const bottomRef = useRef(null)
+  const simLines = variant === 'dq' ? SIMULATED_DQ : SIMULATED_REC
+
+  // Phase 1: animate simulated lines
   useEffect(() => {
-    if (!entries || entries.length === 0) return
-    setVisibleCount(0)
+    if (phase !== 'simulated') return
+    setSimCount(1) // show first line immediately
+    let i = 1
+    const timer = setInterval(() => {
+      i++
+      if (i > simLines.length) {
+        // Loop: keep last lines visible, don't add more
+        clearInterval(timer)
+        return
+      }
+      setSimCount(i)
+    }, 800)
+    return () => clearInterval(timer)
+  }, [phase, simLines.length])
+
+  // Transition to phase 2 when real entries arrive
+  useEffect(() => {
+    if (entries && entries.length > 0 && phase === 'simulated') {
+      setPhase('real')
+      setRealCount(0)
+    }
+  }, [entries, phase])
+
+  // Phase 2: animate real entries
+  useEffect(() => {
+    if (phase !== 'real' || !entries) return
     let i = 0
     const timer = setInterval(() => {
       i++
-      setVisibleCount(i)
-      if (i >= entries.length) clearInterval(timer)
+      setRealCount(i)
+      if (i >= entries.length) {
+        clearInterval(timer)
+        setPhase('done')
+      }
     }, 300)
     return () => clearInterval(timer)
-  }, [entries])
+  }, [phase, entries])
 
-  // Auto-scroll to bottom as entries appear
+  // Notify parent when done
+  useEffect(() => {
+    if (phase === 'done' && onAnimationDone) {
+      onAnimationDone()
+    }
+  }, [phase, onAnimationDone])
+
+  // Auto-scroll
   useEffect(() => {
     if (bottomRef.current && expanded) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
-  }, [visibleCount, expanded])
+  }, [simCount, realCount, expanded])
 
-  // Collapse when all shown and defaultExpanded changes
-  useEffect(() => {
-    setExpanded(defaultExpanded)
-  }, [defaultExpanded])
-
-  if (!entries || entries.length === 0) return null
+  const isActive = phase === 'simulated' || phase === 'real'
+  const isDone = phase === 'done'
+  const displayEntries = phase === 'simulated'
+    ? simLines.slice(0, simCount)
+    : (entries || []).slice(0, realCount)
+  const totalSteps = isDone && entries ? entries.length : null
 
   return (
     <div style={{
@@ -129,18 +193,18 @@ export default function AgentPanel({ entries, qaReport, defaultExpanded = true }
           <span style={{ color: '#E2E8F0', fontSize: '13px', fontWeight: '600' }}>
             Panel de Agentes
           </span>
-          {!allShown && (
+          {isActive && (
             <span style={{
               display: 'inline-block',
               width: '8px', height: '8px',
               borderRadius: '50%',
               background: '#E8721A',
-              animation: 'pulse 1.5s ease-in-out infinite',
+              animation: 'agentPulse 1.5s ease-in-out infinite',
             }} />
           )}
-          {allShown && (
+          {totalSteps && (
             <span style={{ color: '#94A3B8', fontSize: '12px' }}>
-              — {entries.length} pasos completados
+              — {totalSteps} pasos completados
             </span>
           )}
         </div>
@@ -159,15 +223,15 @@ export default function AgentPanel({ entries, qaReport, defaultExpanded = true }
           overflowY: 'auto',
           fontFamily: '"SF Mono", "Fira Code", "Cascadia Code", monospace',
         }}>
-          {entries.slice(0, visibleCount).map((entry, i) => (
-            <EntryRow key={i} entry={entry} visible={true} />
+          {displayEntries.map((entry, i) => (
+            <EntryRow key={phase === 'simulated' ? `sim-${i}` : `real-${i}`} entry={entry} visible={true} />
           ))}
-          {/* Placeholder for next entry (animating in) */}
-          {!allShown && entries[visibleCount] && (
-            <EntryRow entry={entries[visibleCount]} visible={false} />
+          {/* Ghost next entry */}
+          {phase === 'real' && entries && realCount < entries.length && (
+            <EntryRow entry={entries[realCount]} visible={false} />
           )}
-          {/* QA badge at the end */}
-          {allShown && qaReport && (
+          {/* QA badge */}
+          {isDone && qaReport && (
             <div style={{ textAlign: 'center', paddingTop: '8px' }}>
               <ConfidenceBadge qaReport={qaReport} />
             </div>
@@ -176,7 +240,7 @@ export default function AgentPanel({ entries, qaReport, defaultExpanded = true }
         </div>
       )}
 
-      <style>{`@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
+      <style>{`@keyframes agentPulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
     </div>
   )
 }

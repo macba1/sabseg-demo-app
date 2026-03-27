@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { colors } from './theme'
 import Header from './components/Header'
 import Landing from './components/Landing'
@@ -7,7 +7,6 @@ import RecClosingDetail from './components/rec/RecClosingDetail'
 import RecResults from './components/rec/RecResults'
 import DQWorkspace from './components/dq/DQWorkspace'
 import DQResults from './components/dq/DQResults'
-import ProcessingSpinner from './components/shared/ProcessingSpinner'
 import AgentPanel from './components/shared/AgentPanel'
 import ErrorBanner from './components/shared/ErrorBanner'
 
@@ -28,6 +27,10 @@ async function apiCall(url, options = {}) {
   - landing
   - rec-workspace → rec-closing → rec-processing → rec-results
   - dq-workspace → dq-processing → dq-results
+
+  During processing screens, AgentPanel shows simulated lines.
+  When API responds, it transitions to real lines.
+  When animation finishes, results appear below.
 */
 
 export default function App() {
@@ -35,15 +38,19 @@ export default function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [selectedCierre, setSelectedCierre] = useState(null)
+  const [showResults, setShowResults] = useState(false)
 
   const currentSection =
     screen.startsWith('rec') ? 'reconciliation' :
     screen.startsWith('dq') ? 'data-quality' : null
 
-  const goLanding = () => { setScreen('landing'); setData(null); setError(null); setSelectedCierre(null) }
+  const goLanding = () => {
+    setScreen('landing'); setData(null); setError(null)
+    setSelectedCierre(null); setShowResults(false)
+  }
 
   const handleNavigate = (id) => {
-    setError(null); setData(null); setSelectedCierre(null)
+    setError(null); setData(null); setSelectedCierre(null); setShowResults(false)
     if (id === 'landing') setScreen('landing')
     else if (id === 'reconciliation') setScreen('rec-workspace')
     else if (id === 'data-quality') setScreen('dq-workspace')
@@ -57,11 +64,12 @@ export default function App() {
   }
 
   const handleRunReconciliation = async () => {
-    setScreen('rec-processing'); setError(null)
+    setScreen('rec-processing'); setError(null); setData(null); setShowResults(false)
     try {
       const result = await apiCall(`${API_URL}/api/demo-sabseg-logged`, { method: 'POST' })
       setData(result)
-      setScreen('rec-results')
+      // Stay on rec-processing — AgentPanel will transition to real entries
+      // and call onAnimationDone which sets showResults=true
     } catch (e) {
       setError(e.message)
       setScreen('rec-closing')
@@ -71,20 +79,26 @@ export default function App() {
   // ─── Data Quality flow ─────────────────────────────────────────────
 
   const handleDQValidateAll = async () => {
-    setScreen('dq-processing'); setError(null)
+    setScreen('dq-processing'); setError(null); setData(null); setShowResults(false)
     try {
       const result = await apiCall(`${API_URL}/api/data-quality-demo-logged`, { method: 'POST' })
       setData(result)
-      setScreen('dq-results')
     } catch (e) {
       setError(e.message)
       setScreen('dq-workspace')
     }
   }
 
+  // Called when AgentPanel finishes animating all real entries
+  const handleAgentAnimationDone = useCallback(() => {
+    setShowResults(true)
+  }, [])
+
   // ─── Routing ───────────────────────────────────────────────────────
 
-  const isProcessing = screen === 'rec-processing' || screen === 'dq-processing'
+  const isRecProcessing = screen === 'rec-processing'
+  const isDQProcessing = screen === 'dq-processing'
+  const isProcessing = isRecProcessing || isDQProcessing
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: colors.bg, minHeight: '100vh' }}>
@@ -107,29 +121,45 @@ export default function App() {
         {screen === 'rec-closing' && selectedCierre && (
           <RecClosingDetail cierre={selectedCierre} onBack={() => setScreen('rec-workspace')} onRun={handleRunReconciliation} />
         )}
-        {screen === 'rec-processing' && <ProcessingSpinner message="Ejecutando reconciliación..." />}
-        {screen === 'rec-results' && data && (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 32px 0' }}>
-            <AgentPanel entries={data.agent_log} qaReport={data.qa_report} defaultExpanded={false} />
+        {isRecProcessing && (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
+            <AgentPanel
+              entries={data ? data.agent_log : null}
+              qaReport={data ? data.qa_report : null}
+              loading={!data}
+              variant="rec"
+              onAnimationDone={handleAgentAnimationDone}
+            />
+            {showResults && data && (
+              <div style={{ opacity: 1, animation: 'fadeIn 0.4s ease' }}>
+                <RecResults data={data} onBack={() => { setScreen('rec-workspace'); setShowResults(false); setData(null) }} />
+              </div>
+            )}
           </div>
-        )}
-        {screen === 'rec-results' && data && (
-          <RecResults data={data} onBack={() => setScreen('rec-workspace')} />
         )}
 
         {/* Data Quality */}
         {screen === 'dq-workspace' && (
           <DQWorkspace onValidateAll={handleDQValidateAll} onBack={goLanding} />
         )}
-        {screen === 'dq-processing' && <ProcessingSpinner message="Validando ficheros..." />}
-        {screen === 'dq-results' && data && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 32px 0' }}>
-            <AgentPanel entries={data.agent_log} qaReport={data.qa_report} defaultExpanded={false} />
+        {isDQProcessing && (
+          <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
+            <AgentPanel
+              entries={data ? data.agent_log : null}
+              qaReport={data ? data.qa_report : null}
+              loading={!data}
+              variant="dq"
+              onAnimationDone={handleAgentAnimationDone}
+            />
+            {showResults && data && (
+              <div style={{ opacity: 1, animation: 'fadeIn 0.4s ease' }}>
+                <DQResults data={data} onBack={() => { setScreen('dq-workspace'); setShowResults(false); setData(null) }} apiUrl={API_URL} apiCall={apiCall} />
+              </div>
+            )}
           </div>
         )}
-        {screen === 'dq-results' && data && (
-          <DQResults data={data} onBack={() => setScreen('dq-workspace')} apiUrl={API_URL} apiCall={apiCall} />
-        )}
+
+        <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }`}</style>
       </main>
     </div>
   )
