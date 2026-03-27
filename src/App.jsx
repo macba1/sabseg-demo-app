@@ -1,14 +1,14 @@
 import { useState } from 'react'
+import { colors } from './theme'
+import Header from './components/Header'
 import Landing from './components/Landing'
-import Upload from './components/Upload'
-import Processing from './components/Processing'
-import Dashboard from './components/Dashboard'
-import SabsegDashboard from './components/SabsegDashboard'
-import NormalizeUpload from './components/NormalizeUpload'
-import NormalizeProcessing from './components/NormalizeProcessing'
-import NormalizeDashboard from './components/NormalizeDashboard'
-import DataQualityUpload from './components/DataQualityUpload'
-import DataQualityDashboard from './components/DataQualityDashboard'
+import RecWorkspace from './components/rec/RecWorkspace'
+import RecClosingDetail from './components/rec/RecClosingDetail'
+import RecResults from './components/rec/RecResults'
+import DQWorkspace from './components/dq/DQWorkspace'
+import DQResults from './components/dq/DQResults'
+import ProcessingSpinner from './components/shared/ProcessingSpinner'
+import ErrorBanner from './components/shared/ErrorBanner'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -22,152 +22,102 @@ async function apiCall(url, options = {}) {
   return res.json()
 }
 
+/*
+  Screen states:
+  - landing
+  - rec-workspace → rec-closing → rec-processing → rec-results
+  - dq-workspace → dq-processing → dq-results
+*/
+
 export default function App() {
   const [screen, setScreen] = useState('landing')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [normMode, setNormMode] = useState(null) // 'demo' | 'upload'
-  const [normFiles, setNormFiles] = useState(null) // stored File objects for on-demand consolidation
+  const [selectedCierre, setSelectedCierre] = useState(null)
 
-  const goLanding = () => { setScreen('landing'); setData(null); setError(null); setNormMode(null); setNormFiles(null) }
+  const currentSection =
+    screen.startsWith('rec') ? 'reconciliation' :
+    screen.startsWith('dq') ? 'data-quality' : null
+
+  const goLanding = () => { setScreen('landing'); setData(null); setError(null); setSelectedCierre(null) }
+
+  const handleNavigate = (id) => {
+    setError(null); setData(null); setSelectedCierre(null)
+    if (id === 'landing') setScreen('landing')
+    else if (id === 'reconciliation') setScreen('rec-workspace')
+    else if (id === 'data-quality') setScreen('dq-workspace')
+  }
 
   // ─── Reconciliation flow ───────────────────────────────────────────
 
-  const handleUpload = async (fileA, fileB, fileC) => {
-    setScreen('rec-processing')
-    setError(null)
-    try {
-      const formData = new FormData()
-      formData.append('file_a', fileA)
-      formData.append('file_b', fileB)
-      let endpoint = `${API_URL}/api/reconcile`
-      if (fileC) {
-        formData.append('file_c', fileC)
-        endpoint = `${API_URL}/api/reconcile-triangular`
-      }
-      setData(await apiCall(endpoint, { method: 'POST', body: formData }))
-      setScreen('rec-dashboard')
-    } catch (e) { setError(e.message); setScreen('rec-upload') }
+  const handleSelectCierre = (cierre) => {
+    setSelectedCierre(cierre)
+    setScreen('rec-closing')
   }
 
-  const handleDemo = async () => {
-    setScreen('rec-processing'); setError(null)
-    try {
-      setData(await apiCall(`${API_URL}/api/demo`, { method: 'POST' }))
-      setScreen('rec-dashboard')
-    } catch (e) { setError(e.message); setScreen('rec-upload') }
-  }
-
-  const handleDemoTriangular = async () => {
-    setScreen('rec-processing'); setError(null)
-    try {
-      setData(await apiCall(`${API_URL}/api/demo?triangular=true`, { method: 'POST' }))
-      setScreen('rec-dashboard')
-    } catch (e) { setError(e.message); setScreen('rec-upload') }
-  }
-
-  const handleDemoSabseg = async () => {
+  const handleRunReconciliation = async () => {
     setScreen('rec-processing'); setError(null)
     try {
       setData(await apiCall(`${API_URL}/api/demo-sabseg`, { method: 'POST' }))
-      setScreen('sabseg-dashboard')
-    } catch (e) { setError(e.message); setScreen('rec-upload') }
-  }
-
-  // ─── Normalization flow ────────────────────────────────────────────
-
-  const handleNormAnalyze = async (files) => {
-    setScreen('norm-processing'); setError(null)
-    setNormMode('upload'); setNormFiles(files)
-    try {
-      const formData = new FormData()
-      files.forEach(f => formData.append('files', f))
-      setData(await apiCall(`${API_URL}/api/normalize-batch`, { method: 'POST', body: formData }))
-      setScreen('norm-dashboard')
-    } catch (e) { setError(e.message); setScreen('norm-upload') }
-  }
-
-  const handleNormDemo = async () => {
-    setScreen('norm-processing'); setError(null)
-    setNormMode('demo'); setNormFiles(null)
-    try {
-      setData(await apiCall(`${API_URL}/api/normalize-demo`, { method: 'POST' }))
-      setScreen('norm-dashboard')
-    } catch (e) { setError(e.message); setScreen('norm-upload') }
-  }
-
-  const handleConsolidate = async () => {
-    if (normMode === 'demo') {
-      return apiCall(`${API_URL}/api/normalize-demo-consolidate`, { method: 'POST' })
-    } else {
-      const formData = new FormData()
-      normFiles.forEach(f => formData.append('files', f))
-      return apiCall(`${API_URL}/api/normalize-consolidate`, { method: 'POST', body: formData })
+      setScreen('rec-results')
+    } catch (e) {
+      setError(e.message)
+      setScreen('rec-closing')
     }
   }
 
-  // ─── Data Quality flow ────────────────────────────────────────────
+  // ─── Data Quality flow ─────────────────────────────────────────────
 
-  const handleDQDemo = async () => {
+  const handleDQValidateAll = async () => {
     setScreen('dq-processing'); setError(null)
     try {
       setData(await apiCall(`${API_URL}/api/data-quality-demo`, { method: 'POST' }))
-      setScreen('dq-dashboard')
-    } catch (e) { setError(e.message); setScreen('dq-upload') }
-  }
-
-  const handleDQUpload = async (files) => {
-    setScreen('dq-processing'); setError(null)
-    try {
-      const formData = new FormData()
-      files.forEach(f => formData.append('files', f))
-      setData(await apiCall(`${API_URL}/api/data-quality`, { method: 'POST', body: formData }))
-      setScreen('dq-dashboard')
-    } catch (e) { setError(e.message); setScreen('dq-upload') }
+      setScreen('dq-results')
+    } catch (e) {
+      setError(e.message)
+      setScreen('dq-workspace')
+    }
   }
 
   // ─── Routing ───────────────────────────────────────────────────────
 
+  const isProcessing = screen === 'rec-processing' || screen === 'dq-processing'
+
   return (
-    <>
-      {screen === 'landing' && (
-        <Landing onSelect={id => {
-          setError(null); setData(null)
-          if (id === 'reconciliation') setScreen('rec-upload')
-          else if (id === 'data-quality') setScreen('dq-upload')
-          else setScreen('norm-upload')
-        }} />
-      )}
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: colors.bg, minHeight: '100vh' }}>
+      <Header currentSection={currentSection} onNavigate={handleNavigate} />
+      <main style={{ paddingTop: '56px', transition: 'opacity 0.2s', opacity: isProcessing ? 0.6 : 1 }}>
+        {error && !isProcessing && (
+          <div style={{ maxWidth: '1000px', margin: '16px auto 0', padding: '0 32px' }}>
+            <ErrorBanner message={error} onDismiss={() => setError(null)} />
+          </div>
+        )}
 
-      {/* Reconciliation */}
-      {screen === 'rec-upload' && (
-        <Upload onUpload={handleUpload} onDemo={handleDemo} onDemoTriangular={handleDemoTriangular} onDemoSabseg={handleDemoSabseg} onBack={goLanding} error={error} />
-      )}
-      {screen === 'rec-processing' && <Processing />}
-      {screen === 'rec-dashboard' && data && (
-        <Dashboard data={data} onReset={goLanding} />
-      )}
-      {screen === 'sabseg-dashboard' && data && (
-        <SabsegDashboard data={data} onBack={goLanding} />
-      )}
+        {screen === 'landing' && (
+          <Landing onSelect={handleNavigate} />
+        )}
 
-      {/* Normalization */}
-      {screen === 'norm-upload' && (
-        <NormalizeUpload onAnalyze={handleNormAnalyze} onDemo={handleNormDemo} onBack={goLanding} error={error} />
-      )}
-      {screen === 'norm-processing' && <NormalizeProcessing />}
-      {screen === 'norm-dashboard' && data && (
-        <NormalizeDashboard data={data} onBack={goLanding} onConsolidate={handleConsolidate} />
-      )}
+        {/* Reconciliation */}
+        {screen === 'rec-workspace' && (
+          <RecWorkspace onSelectCierre={handleSelectCierre} onBack={goLanding} />
+        )}
+        {screen === 'rec-closing' && selectedCierre && (
+          <RecClosingDetail cierre={selectedCierre} onBack={() => setScreen('rec-workspace')} onRun={handleRunReconciliation} />
+        )}
+        {screen === 'rec-processing' && <ProcessingSpinner message="Ejecutando reconciliación..." />}
+        {screen === 'rec-results' && data && (
+          <RecResults data={data} onBack={() => setScreen('rec-workspace')} />
+        )}
 
-      {/* Data Quality */}
-      {screen === 'dq-upload' && (
-        <DataQualityUpload onUpload={handleDQUpload} onDemo={handleDQDemo} onBack={goLanding} error={error} />
-      )}
-      {screen === 'dq-processing' && <Processing />}
-      {screen === 'dq-dashboard' && data && (
-        <DataQualityDashboard data={data} onBack={goLanding} apiUrl={API_URL} apiCall={apiCall} />
-      )}
-    </>
+        {/* Data Quality */}
+        {screen === 'dq-workspace' && (
+          <DQWorkspace onValidateAll={handleDQValidateAll} onBack={goLanding} />
+        )}
+        {screen === 'dq-processing' && <ProcessingSpinner message="Validando ficheros..." />}
+        {screen === 'dq-results' && data && (
+          <DQResults data={data} onBack={() => setScreen('dq-workspace')} apiUrl={API_URL} apiCall={apiCall} />
+        )}
+      </main>
+    </div>
   )
 }
