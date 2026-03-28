@@ -14,6 +14,7 @@ function KPI({ label, value, color }) {
 
 function IssueCard({ issue }) {
   const [expanded, setExpanded] = useState(false)
+  if (!issue) return null
   const sev = issue.correccion_auto ? 'auto-fix' : issue.severidad === 'error' ? 'error' : 'warning'
 
   return (
@@ -37,8 +38,8 @@ function IssueCard({ issue }) {
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <SeverityBadge severity={sev} />
-          <span style={{ color: colors.navy, fontSize: '13px', fontWeight: '500' }}>{issue.tipo}</span>
-          <span style={{ color: colors.grayLight, fontSize: '12px' }}>({issue.cantidad} caso{issue.cantidad !== 1 ? 's' : ''})</span>
+          <span style={{ color: colors.navy, fontSize: '13px', fontWeight: '500' }}>{issue.tipo || ''}</span>
+          <span style={{ color: colors.grayLight, fontSize: '12px' }}>({issue.cantidad ?? 0} caso{issue.cantidad !== 1 ? 's' : ''})</span>
         </div>
         <span style={{ color: colors.gray, fontSize: '14px', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
       </div>
@@ -78,9 +79,10 @@ function IssueCard({ issue }) {
 
 function FileCard({ result }) {
   const [expanded, setExpanded] = useState(false)
-  const allIssues = [...(result.errors || []), ...(result.warnings || []), ...(result.corrections || [])]
-  const errorCount = (result.errors || []).reduce((s, e) => s + (e.cantidad || 0), 0)
-  const warnCount = (result.warnings || []).reduce((s, w) => s + (w.cantidad || 0), 0)
+  if (!result) return null
+  const allIssues = [...(result.errors || []), ...(result.warnings || []), ...(result.corrections || [])].filter(Boolean)
+  const errorCount = (result.errors || []).reduce((s, e) => s + (e?.cantidad || 0), 0)
+  const warnCount = (result.warnings || []).reduce((s, w) => s + (w?.cantidad || 0), 0)
   const autoCount = result.auto_correctable || 0
 
   return (
@@ -156,17 +158,17 @@ function ArrentaComparison({ data }) {
               <p style={{ color: colors.navy, fontSize: '20px', fontWeight: '600' }}>{data.records_feb}</p>
             </div>
           </div>
-          {(data.issues || []).map((issue, i) => (
+          {(data.issues || []).filter(Boolean).map((issue, i) => (
             <div key={i} style={{
               padding: '10px 12px',
               borderRadius: '6px',
-              background: issue.severidad === 'error' ? colors.redBg : colors.yellowBg,
-              border: `1px solid ${issue.severidad === 'error' ? colors.redBorder : colors.yellowBorder}`,
+              background: issue?.severidad === 'error' ? colors.redBg : colors.yellowBg,
+              border: `1px solid ${issue?.severidad === 'error' ? colors.redBorder : colors.yellowBorder}`,
               marginBottom: '6px',
               fontSize: '13px',
-              color: issue.severidad === 'error' ? colors.red : colors.yellow,
+              color: issue?.severidad === 'error' ? colors.red : colors.yellow,
             }}>
-              <strong>{issue.tipo}</strong>: {issue.detalle}
+              <strong>{issue?.tipo || ''}</strong>: {issue?.detalle || ''}
             </div>
           ))}
         </div>
@@ -182,7 +184,9 @@ export default function DQResults({ data, apiUrl, apiCall }) {
   const [loadingReports, setLoadingReports] = useState(false)
   const [actionError, setActionError] = useState(null)
 
-  const results = data.results || []
+  if (!data) return null
+
+  const results = (data.results || []).filter(Boolean)
 
   const handleCorrections = async () => {
     setLoadingCorrections(true); setActionError(null)
@@ -268,25 +272,25 @@ export default function DQResults({ data, apiUrl, apiCall }) {
               <p style={{ color: colors.yellow, fontSize: '24px', fontWeight: '700' }}>{correctionsData.total_remaining}</p>
             </div>
           </div>
-          {(correctionsData.results || []).map((r, i) => (
+          {(correctionsData.results || []).filter(Boolean).map((r, i) => (
             <div key={i} style={{ marginBottom: '12px' }}>
               <h4 style={{ color: colors.navy, fontSize: '14px', fontWeight: '600', marginBottom: '6px' }}>
                 {r.correduria || r.filename}
               </h4>
-              {(r.corrections_applied || []).map((c, j) => (
+              {(r.corrections_applied || []).filter(Boolean).map((c, j) => (
                 <div key={j} style={{
                   padding: '8px 12px', borderRadius: '6px', background: colors.greenBg,
                   border: `1px solid ${colors.greenBorder}`, marginBottom: '4px', fontSize: '13px', color: colors.navy,
                 }}>
-                  ✓ {c.tipo} — {c.detalle}
+                  ✓ {c?.tipo || ''} — {c?.detalle || ''}
                 </div>
               ))}
-              {(r.remaining_issues || []).map((ri, j) => (
+              {(r.remaining_issues || []).filter(Boolean).map((ri, j) => (
                 <div key={j} style={{
                   padding: '8px 12px', borderRadius: '6px', background: colors.yellowBg,
                   border: `1px solid ${colors.yellowBorder}`, marginBottom: '4px', fontSize: '13px', color: colors.yellow,
                 }}>
-                  ⚠ {ri.tipo} — {ri.detalle}
+                  ⚠ {ri?.tipo || ''} — {ri?.detalle || ''}
                 </div>
               ))}
             </div>
@@ -300,7 +304,7 @@ export default function DQResults({ data, apiUrl, apiCall }) {
           <h3 style={{ color: colors.navy, fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
             Informes generados
           </h3>
-          {(reportsData.reports || []).map((report, i) => (
+          {(reportsData.reports || []).filter(Boolean).map((report, i) => (
             <div key={i} style={{
               border: `1px solid ${colors.border}`,
               borderRadius: '8px',

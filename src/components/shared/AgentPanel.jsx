@@ -20,11 +20,13 @@ function getAgent(label) {
 
 // ── Flatten entries: main line + data sub-lines ──────────────────────
 
-function flattenEntries(entries, baseTime) {
+function flattenEntries(entries) {
+  if (!Array.isArray(entries)) return []
   const lines = []
   let elapsed = 0
   entries.forEach((entry) => {
-    const agent = getAgent(entry.agent_label || entry.agent)
+    if (!entry) return
+    const agent = getAgent(entry.agent_label || entry.agent || '')
     elapsed += 0.12 + Math.random() * 0.25
     lines.push({
       type: 'main',
@@ -36,11 +38,12 @@ function flattenEntries(entries, baseTime) {
     // Flatten data into sub-lines
     if (entry.data && typeof entry.data === 'object') {
       const items = Array.isArray(entry.data)
-        ? entry.data
+        ? entry.data.filter(Boolean)
         : Object.entries(entry.data).map(([k, v]) =>
-            `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`
+            `${k}: ${Array.isArray(v) ? v.join(', ') : String(v ?? '')}`
           )
       items.forEach((item) => {
+        if (item == null) return
         elapsed += 0.03 + Math.random() * 0.06
         lines.push({
           type: 'data',
@@ -90,7 +93,8 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
   useEffect(() => {
     if (phase !== 'simulated') return
 
-    const simFlat = flattenEntries(simLines, 0)
+    const simFlat = flattenEntries(simLines)
+    if (simFlat.length === 0) return
     let i = 0
     // Show first line immediately
     setVisibleLines([simFlat[0]])
@@ -111,7 +115,7 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
   // Transition: when real entries arrive, switch to streaming
   useEffect(() => {
     if (entries && entries.length > 0 && phase === 'simulated') {
-      const flat = flattenEntries(entries, 0)
+      const flat = flattenEntries(entries)
       flatRef.current = flat
       setPhase('streaming')
       setStreamIndex(0)
@@ -135,7 +139,10 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
         setPhase('done')
         return
       }
-      setVisibleLines(prev => [...prev, flat[i]])
+      const line = flat[i]
+      if (line) {
+        setVisibleLines(prev => [...prev, line])
+      }
       setStreamIndex(i)
       i++
     }, 120)
@@ -217,7 +224,7 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
           lineHeight: '1.7',
         }}
       >
-        {visibleLines.map((line, i) => {
+        {visibleLines.filter(Boolean).map((line, i) => {
           if (line.type === 'main') {
             return (
               <div key={i} style={{
@@ -269,7 +276,7 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
               }}>
-                {line.text}
+                {line.text || ''}
               </span>
             </div>
           )

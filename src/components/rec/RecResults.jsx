@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { colors, card } from '../../theme'
 import StatusBadge from '../shared/StatusBadge'
 
@@ -34,12 +34,12 @@ function DetailPanel({ row }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {row.detalle_contab.map((d, i) => (
+                  {row.detalle_contab.filter(Boolean).map((d, i) => (
                     <tr key={i} style={{ borderBottom: `1px solid ${colors.borderLight}` }}>
-                      <td style={{ padding: '6px 8px', color: colors.navy }}>{d.cuenta || d.subcuenta}</td>
-                      <td style={{ padding: '6px 8px', color: colors.gray }}>{d.descripcion || d.nombre || '-'}</td>
+                      <td style={{ padding: '6px 8px', color: colors.navy }}>{d?.cuenta || d?.subcuenta || '-'}</td>
+                      <td style={{ padding: '6px 8px', color: colors.gray }}>{d?.descripcion || d?.nombre || '-'}</td>
                       <td style={{ padding: '6px 8px', textAlign: 'right', color: colors.navy }}>
-                        {typeof d.importe === 'number' ? d.importe.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : d.importe}
+                        {typeof d?.importe === 'number' ? d.importe.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : (d?.importe ?? '-')}
                       </td>
                     </tr>
                   ))}
@@ -63,7 +63,10 @@ export default function RecResults({ data }) {
   const [cuentaFilter, setCuentaFilter] = useState('all')
   const [expandedRow, setExpandedRow] = useState(null)
 
+  if (!data) return null
+
   const rows = (data.reconciliacion || []).filter(r => {
+    if (!r) return false
     if (statusFilter !== 'all' && r.status !== statusFilter) return false
     if (cuentaFilter !== 'all' && !r.cuenta?.startsWith(cuentaFilter)) return false
     return true
@@ -128,8 +131,8 @@ export default function RecResults({ data }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tbody key={r.id || i}>
+            {rows.map((r, i) => r ? (
+              <React.Fragment key={r.id || i}>
                 <tr
                   onClick={() => setExpandedRow(expandedRow === i ? null : i)}
                   style={{
@@ -156,8 +159,8 @@ export default function RecResults({ data }) {
                   <td style={{ padding: '10px 12px' }}><StatusBadge status={r.status} /></td>
                 </tr>
                 {expandedRow === i && <DetailPanel row={r} />}
-              </tbody>
-            ))}
+              </React.Fragment>
+            ) : null)}
           </tbody>
         </table>
         {rows.length === 0 && (
