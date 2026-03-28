@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { colors } from './theme'
-import Header from './components/Header'
-import Landing from './components/Landing'
+import Sidebar from './components/Sidebar'
+import TopBar from './components/TopBar'
 import RecWorkspace from './components/rec/RecWorkspace'
-import RecClosingDetail from './components/rec/RecClosingDetail'
 import RecResults from './components/rec/RecResults'
 import DQWorkspace from './components/dq/DQWorkspace'
 import DQResults from './components/dq/DQResults'
@@ -24,55 +23,40 @@ async function apiCall(url, options = {}) {
 
 /*
   Screen states:
-  - landing
-  - rec-workspace → rec-closing → rec-processing → rec-results
-  - dq-workspace → dq-processing → dq-results
+  - rec-workspace → rec-processing
+  - dq-workspace → dq-processing
 
-  During processing screens, AgentPanel shows simulated lines.
-  When API responds, it transitions to real lines.
-  When animation finishes, results appear below.
+  Sidebar always visible. AgentPanel appears during processing.
+  Results appear below AgentPanel after animation completes.
 */
 
 export default function App() {
-  const [screen, setScreen] = useState('landing')
+  const [screen, setScreen] = useState('rec-workspace')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
-  const [selectedCierre, setSelectedCierre] = useState(null)
   const [showResults, setShowResults] = useState(false)
+  const resultsRef = useRef(null)
 
   const currentSection =
     screen.startsWith('rec') ? 'reconciliation' :
-    screen.startsWith('dq') ? 'data-quality' : null
-
-  const goLanding = () => {
-    setScreen('landing'); setData(null); setError(null)
-    setSelectedCierre(null); setShowResults(false)
-  }
+    screen.startsWith('dq') ? 'data-quality' : 'reconciliation'
 
   const handleNavigate = (id) => {
-    setError(null); setData(null); setSelectedCierre(null); setShowResults(false)
-    if (id === 'landing') setScreen('landing')
-    else if (id === 'reconciliation') setScreen('rec-workspace')
+    setError(null); setData(null); setShowResults(false)
+    if (id === 'reconciliation') setScreen('rec-workspace')
     else if (id === 'data-quality') setScreen('dq-workspace')
   }
 
   // ─── Reconciliation flow ───────────────────────────────────────────
-
-  const handleSelectCierre = (cierre) => {
-    setSelectedCierre(cierre)
-    setScreen('rec-closing')
-  }
 
   const handleRunReconciliation = async () => {
     setScreen('rec-processing'); setError(null); setData(null); setShowResults(false)
     try {
       const result = await apiCall(`${API_URL}/api/demo-sabseg-logged`, { method: 'POST' })
       setData(result)
-      // Stay on rec-processing — AgentPanel will transition to real entries
-      // and call onAnimationDone which sets showResults=true
     } catch (e) {
       setError(e.message)
-      setScreen('rec-closing')
+      setScreen('rec-workspace')
     }
   }
 
@@ -89,10 +73,29 @@ export default function App() {
     }
   }
 
-  // Called when AgentPanel finishes animating all real entries
   const handleAgentAnimationDone = useCallback(() => {
     setShowResults(true)
   }, [])
+
+  const scrollToResults = () => {
+    if (resultsRef.current) {
+      resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  // ─── Breadcrumbs ───────────────────────────────────────────────────
+
+  const getBreadcrumbs = () => {
+    const crumbs = []
+    if (screen.startsWith('rec')) {
+      crumbs.push({ label: 'Reconciliación', onClick: screen !== 'rec-workspace' ? () => { setScreen('rec-workspace'); setData(null); setShowResults(false) } : undefined })
+      if (screen === 'rec-processing') crumbs.push({ label: 'Procesando' })
+    } else if (screen.startsWith('dq')) {
+      crumbs.push({ label: 'Data Quality', onClick: screen !== 'dq-workspace' ? () => { setScreen('dq-workspace'); setData(null); setShowResults(false) } : undefined })
+      if (screen === 'dq-processing') crumbs.push({ label: 'Procesando' })
+    }
+    return crumbs
+  }
 
   // ─── Routing ───────────────────────────────────────────────────────
 
@@ -101,63 +104,138 @@ export default function App() {
   const isProcessing = isRecProcessing || isDQProcessing
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', background: colors.bg, minHeight: '100vh' }}>
-      <Header currentSection={currentSection} onNavigate={handleNavigate} />
-      <main style={{ paddingTop: '56px' }}>
-        {error && !isProcessing && (
-          <div style={{ maxWidth: '1000px', margin: '16px auto 0', padding: '0 32px' }}>
-            <ErrorBanner message={error} onDismiss={() => setError(null)} />
-          </div>
-        )}
+    <div style={{
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: colors.bg,
+      minHeight: '100vh',
+    }}>
+      <Sidebar activeSection={currentSection} onNavigate={handleNavigate} />
+      <TopBar breadcrumbs={getBreadcrumbs()} />
 
-        {screen === 'landing' && (
-          <Landing onSelect={handleNavigate} />
-        )}
+      <main style={{
+        marginLeft: '240px',
+        paddingTop: '52px',
+        minHeight: 'calc(100vh - 52px)',
+      }}>
+        <div style={{
+          maxWidth: '1100px',
+          margin: '0 auto',
+          padding: '32px',
+        }}>
+          {error && !isProcessing && (
+            <div style={{ marginBottom: '16px' }}>
+              <ErrorBanner message={error} onDismiss={() => setError(null)} />
+            </div>
+          )}
 
-        {/* Reconciliation */}
-        {screen === 'rec-workspace' && (
-          <RecWorkspace onSelectCierre={handleSelectCierre} onBack={goLanding} />
-        )}
-        {screen === 'rec-closing' && selectedCierre && (
-          <RecClosingDetail cierre={selectedCierre} onBack={() => setScreen('rec-workspace')} onRun={handleRunReconciliation} />
-        )}
-        {isRecProcessing && (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px' }}>
-            <AgentPanel
-              entries={data ? data.agent_log : null}
-              qaReport={data ? data.qa_report : null}
-              loading={!data}
-              variant="rec"
-              onAnimationDone={handleAgentAnimationDone}
-            />
-            {showResults && data && (
-              <div style={{ opacity: 1, animation: 'fadeIn 0.4s ease' }}>
-                <RecResults data={data} onBack={() => { setScreen('rec-workspace'); setShowResults(false); setData(null) }} />
+          {/* Reconciliation */}
+          {screen === 'rec-workspace' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ color: colors.navy, fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>
+                  Repositorio de ficheros
+                </h1>
+                <p style={{ color: colors.grayLight, fontSize: '14px' }}>
+                  Sube los ficheros de saldos y estadísticas para la reconciliación contable
+                </p>
               </div>
-            )}
-          </div>
-        )}
+              <RecWorkspace onRun={handleRunReconciliation} />
+            </div>
+          )}
 
-        {/* Data Quality */}
-        {screen === 'dq-workspace' && (
-          <DQWorkspace onValidateAll={handleDQValidateAll} onBack={goLanding} />
-        )}
-        {isDQProcessing && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
-            <AgentPanel
-              entries={data ? data.agent_log : null}
-              qaReport={data ? data.qa_report : null}
-              loading={!data}
-              variant="dq"
-              onAnimationDone={handleAgentAnimationDone}
-            />
-            {showResults && data && (
-              <div style={{ opacity: 1, animation: 'fadeIn 0.4s ease' }}>
-                <DQResults data={data} onBack={() => { setScreen('dq-workspace'); setShowResults(false); setData(null) }} apiUrl={API_URL} apiCall={apiCall} />
+          {isRecProcessing && (
+            <div>
+              <AgentPanel
+                entries={data ? data.agent_log : null}
+                qaReport={data ? data.qa_report : null}
+                loading={!data}
+                variant="rec"
+                onAnimationDone={handleAgentAnimationDone}
+              />
+              {showResults && data && (
+                <div style={{ marginTop: '24px' }}>
+                  <button
+                    onClick={scrollToResults}
+                    style={{
+                      display: 'block',
+                      margin: '0 auto 24px',
+                      background: 'none',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '8px',
+                      padding: '10px 24px',
+                      color: colors.navy,
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.target.style.background = colors.white; e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)' }}
+                    onMouseLeave={e => { e.target.style.background = 'none'; e.target.style.boxShadow = 'none' }}
+                  >
+                    Ver resultados detallados ↓
+                  </button>
+                  <div ref={resultsRef} style={{ animation: 'fadeIn 0.4s ease' }}>
+                    <RecResults data={data} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Data Quality */}
+          {screen === 'dq-workspace' && (
+            <div>
+              <div style={{ marginBottom: '24px' }}>
+                <h1 style={{ color: colors.navy, fontSize: '22px', fontWeight: '700', marginBottom: '4px' }}>
+                  Repositorio de ficheros
+                </h1>
+                <p style={{ color: colors.grayLight, fontSize: '14px' }}>
+                  Sube los ficheros de recibos de corredurías para validación
+                </p>
               </div>
-            )}
-          </div>
-        )}
+              <DQWorkspace onRun={handleDQValidateAll} />
+            </div>
+          )}
+
+          {isDQProcessing && (
+            <div>
+              <AgentPanel
+                entries={data ? data.agent_log : null}
+                qaReport={data ? data.qa_report : null}
+                loading={!data}
+                variant="dq"
+                onAnimationDone={handleAgentAnimationDone}
+              />
+              {showResults && data && (
+                <div style={{ marginTop: '24px' }}>
+                  <button
+                    onClick={scrollToResults}
+                    style={{
+                      display: 'block',
+                      margin: '0 auto 24px',
+                      background: 'none',
+                      border: `1px solid ${colors.border}`,
+                      borderRadius: '8px',
+                      padding: '10px 24px',
+                      color: colors.navy,
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => { e.target.style.background = colors.white; e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)' }}
+                    onMouseLeave={e => { e.target.style.background = 'none'; e.target.style.boxShadow = 'none' }}
+                  >
+                    Ver resultados detallados ↓
+                  </button>
+                  <div ref={resultsRef} style={{ animation: 'fadeIn 0.4s ease' }}>
+                    <DQResults data={data} apiUrl={API_URL} apiCall={apiCall} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: translateY(0) } }`}</style>
       </main>

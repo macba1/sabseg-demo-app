@@ -1,23 +1,35 @@
 export const colors = {
   navy: '#1B2A4A',
+  navyLight: '#243556',
   orange: '#E8721A',
   orangeHover: '#D4650F',
   gray: '#64748B',
   grayLight: '#94A3B8',
-  bg: '#F8FAFB',
+  bg: '#F7F8FA',
   white: '#FFFFFF',
-  border: '#E2E8F0',
+  border: '#E5E7EB',
+  borderLight: '#F3F4F6',
   red: '#DC2626',
   redBg: '#FEF2F2',
   redBorder: '#FECACA',
   yellow: '#D97706',
   yellowBg: '#FFFBEB',
   yellowBorder: '#FDE68A',
-  green: '#16A34A',
-  greenBg: '#F0FDF4',
-  greenBorder: '#BBF7D0',
+  green: '#059669',
+  greenBg: '#ECFDF5',
+  greenBorder: '#A7F3D0',
+  blue: '#2563EB',
   blueBg: '#EFF6FF',
   blueBorder: '#BFDBFE',
+  teal: '#0D9488',
+  purple: '#7C3AED',
+  // Agent band colors
+  agentOrchestrator: '#64748B',
+  agentIngestor: '#2563EB',
+  agentDetector: '#0D9488',
+  agentMatching: '#7C3AED',
+  agentValidator: '#E8721A',
+  agentQA: '#D97706',
 }
 
 export const shadows = {
@@ -29,7 +41,7 @@ export const shadows = {
 export const card = {
   background: colors.white,
   borderRadius: '12px',
-  boxShadow: shadows.md,
+  boxShadow: shadows.sm,
   border: `1px solid ${colors.border}`,
 }
 

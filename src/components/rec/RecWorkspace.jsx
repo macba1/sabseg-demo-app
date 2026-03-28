@@ -1,73 +1,42 @@
-import { colors, card, btnPrimary, btnDisabled, shadows } from '../../theme'
-import StatusBadge from '../shared/StatusBadge'
+import FileRepository from '../shared/FileRepository'
 
-const demoCierres = [
+const sections = [
   {
-    id: 'cierre-feb-2026',
-    label: 'Cierre Febrero 2026',
-    periodo: 'Febrero 2026',
-    estado: 'listo',
-    ficheros: 15,
+    id: 'saldos',
+    label: 'Saldos contables',
+    icon: '📒',
+    demoFiles: ['Saldos_Contables_Ene_y_Feb_2026.xlsx'],
   },
   {
-    id: 'cierre-ene-2026',
-    label: 'Cierre Enero 2026',
-    periodo: 'Enero 2026',
-    estado: 'listo',
-    ficheros: 15,
+    id: 'stats',
+    label: 'Estadísticas de venta',
+    icon: '📈',
+    demoFiles: [
+      '2026_02_ELEVIA.xlsx',
+      '2026_02 AGRINALCAZAR AGRO.xlsx',
+      '2026_02 Araytor.xlsx',
+      '2026_02 FUTURA.xlsx',
+      '2026_02 INSURART.xlsx',
+      '2026_02 SANCHEZ VALENCIA.xlsx',
+      '2026_02 SEGURETXE - v2.xlsx',
+      '2026_02 Verobroker.xlsx',
+      '2026_02 ZURRIOLA.xlsx',
+      '02_2026 ADSA AGRO.xlsx',
+      '02_2026 AISA AGRO.xlsx',
+      '02_2026 BANA AGRO.xlsx',
+      'MAURA.pdf',
+      'Recibos_ARRENTA_202602.xlsx',
+    ],
   },
 ]
 
-export default function RecWorkspace({ onSelectCierre, onBack }) {
+export default function RecWorkspace({ onRun }) {
   return (
-    <div style={{ padding: '32px', maxWidth: '900px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: colors.gray,
-          cursor: 'pointer', fontSize: '14px',
-        }}>← Inicio</button>
-        <span style={{ color: colors.border }}>/</span>
-        <span style={{ color: colors.navy, fontWeight: '600', fontSize: '14px' }}>Reconciliación Contable</span>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <h1 style={{ color: colors.navy, fontSize: '22px', fontWeight: '700' }}>
-          Cierres mensuales
-        </h1>
-        <button style={btnDisabled} disabled>
-          + Nuevo cierre
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {demoCierres.map(c => (
-          <div
-            key={c.id}
-            onClick={() => onSelectCierre(c)}
-            style={{
-              ...card,
-              padding: '20px 24px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              cursor: 'pointer',
-              transition: 'box-shadow 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.boxShadow = shadows.lg}
-            onMouseLeave={e => e.currentTarget.style.boxShadow = shadows.md}
-          >
-            <div>
-              <h3 style={{ color: colors.navy, fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
-                {c.label}
-              </h3>
-              <span style={{ color: colors.gray, fontSize: '13px' }}>
-                Periodo: {c.periodo} · {c.ficheros} ficheros cargados
-              </span>
-            </div>
-            <StatusBadge status={c.estado} />
-          </div>
-        ))}
-      </div>
-    </div>
+    <FileRepository
+      sections={sections}
+      onRun={onRun}
+      runLabel="Ejecutar reconciliación"
+      variant="rec"
+    />
   )
 }

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { colors, card, btnPrimary, btnSecondary, shadows } from '../../theme'
+import { colors, card, btnPrimary, btnSecondary } from '../../theme'
 import SeverityBadge from '../shared/SeverityBadge'
 import ErrorBanner from '../shared/ErrorBanner'
 
 function KPI({ label, value, color }) {
   return (
     <div style={{ ...card, padding: '20px 24px', flex: 1, minWidth: '150px' }}>
-      <p style={{ color: colors.gray, fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>{label}</p>
+      <p style={{ color: colors.gray, fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</p>
       <p style={{ color: color || colors.navy, fontSize: '28px', fontWeight: '700', lineHeight: '1.2' }}>{value}</p>
     </div>
   )
@@ -93,13 +93,16 @@ function FileCard({ result }) {
           alignItems: 'center',
           justifyContent: 'space-between',
           cursor: 'pointer',
+          transition: 'background 0.15s',
         }}
+        onMouseEnter={e => e.currentTarget.style.background = colors.bg}
+        onMouseLeave={e => e.currentTarget.style.background = colors.white}
       >
         <div>
           <h3 style={{ color: colors.navy, fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>
             {result.correduria || result.filename}
           </h3>
-          <span style={{ color: colors.gray, fontSize: '12px' }}>
+          <span style={{ color: colors.grayLight, fontSize: '12px' }}>
             {result.filename} · {result.total_records} registros
           </span>
         </div>
@@ -172,7 +175,7 @@ function ArrentaComparison({ data }) {
   )
 }
 
-export default function DQResults({ data, onBack, apiUrl, apiCall }) {
+export default function DQResults({ data, apiUrl, apiCall }) {
   const [correctionsData, setCorrectionsData] = useState(null)
   const [reportsData, setReportsData] = useState(null)
   const [loadingCorrections, setLoadingCorrections] = useState(false)
@@ -182,40 +185,25 @@ export default function DQResults({ data, onBack, apiUrl, apiCall }) {
   const results = data.results || []
 
   const handleCorrections = async () => {
-    setLoadingCorrections(true)
-    setActionError(null)
+    setLoadingCorrections(true); setActionError(null)
     try {
       const res = await apiCall(`${apiUrl}/api/apply-corrections-demo`, { method: 'POST' })
       setCorrectionsData(res)
-    } catch (e) {
-      setActionError(e.message)
-    }
+    } catch (e) { setActionError(e.message) }
     setLoadingCorrections(false)
   }
 
   const handleReports = async () => {
-    setLoadingReports(true)
-    setActionError(null)
+    setLoadingReports(true); setActionError(null)
     try {
       const res = await apiCall(`${apiUrl}/api/generate-reports-demo`, { method: 'POST' })
       setReportsData(res)
-    } catch (e) {
-      setActionError(e.message)
-    }
+    } catch (e) { setActionError(e.message) }
     setLoadingReports(false)
   }
 
   return (
-    <div style={{ padding: '32px', maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-        <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: colors.gray,
-          cursor: 'pointer', fontSize: '14px',
-        }}>← Entregas</button>
-        <span style={{ color: colors.border }}>/</span>
-        <span style={{ color: colors.navy, fontWeight: '600', fontSize: '14px' }}>Resultados</span>
-      </div>
-
+    <div id="results-section">
       {/* KPIs */}
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <KPI label="Ficheros" value={data.total_files || 0} />
@@ -225,13 +213,12 @@ export default function DQResults({ data, onBack, apiUrl, apiCall }) {
         <KPI label="Auto-corregibles" value={data.auto_correctable || 0} color={colors.green} />
       </div>
 
-      {/* File cards */}
+      {/* Resumen ejecutivo */}
       <h2 style={{ color: colors.navy, fontSize: '18px', fontWeight: '600', marginBottom: '12px' }}>
-        Análisis por fichero
+        Análisis por correduría
       </h2>
       {results.map((r, i) => <FileCard key={i} result={r} />)}
 
-      {/* Arrenta comparison */}
       <ArrentaComparison data={data.arrenta_comparison} />
 
       {/* Actions */}
@@ -332,7 +319,7 @@ export default function DQResults({ data, onBack, apiUrl, apiCall }) {
                   <h4 style={{ color: colors.navy, fontSize: '14px', fontWeight: '600' }}>
                     {report.correduria}
                   </h4>
-                  <p style={{ color: colors.gray, fontSize: '12px', marginTop: '2px' }}>
+                  <p style={{ color: colors.grayLight, fontSize: '12px', marginTop: '2px' }}>
                     {report.tiene_incidencias ? `${report.total_incidencias} incidencia(s)` : 'Sin incidencias'}
                   </p>
                 </div>
