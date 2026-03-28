@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { colors, card, shadows, btnPrimary } from '../../theme'
 
 function getFileIcon(name) {
@@ -18,7 +18,13 @@ function getFileType(name) {
   return { label: 'Datos', color: colors.gray, bg: colors.bg }
 }
 
-function getFileSize() {
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+}
+
+function randomDemoSize() {
   return (Math.floor(Math.random() * 400) + 50) + ' KB'
 }
 
@@ -80,28 +86,70 @@ function FileCard({ file, onRemove, animating }) {
   )
 }
 
-export default function FileRepository({ sections, onRun, runLabel, variant }) {
+export default function FileRepository({ sections, onRunDemo, onRunUpload, runLabel }) {
+  // files: { sectionId: [{ name, size, nativeFile? }] }
   const [files, setFiles] = useState({})
   const [animatingFiles, setAnimatingFiles] = useState(new Set())
   const [loadingDemo, setLoadingDemo] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [mode, setMode] = useState(null) // 'demo' | 'upload' | null
+  const fileInputRef = useRef(null)
 
   const allFiles = Object.values(files).flat()
   const hasFiles = allFiles.length > 0
 
+  // ── Handle real file upload (drag & drop or input) ────────────────
+
+  const addRealFiles = useCallback((fileList) => {
+    const newFileEntries = Array.from(fileList).map(f => ({
+      name: f.name,
+      size: formatSize(f.size),
+      nativeFile: f,
+    }))
+
+    // Put all uploaded files into the first section
+    const sectionId = sections[0]?.id || 'default'
+    setFiles(prev => ({
+      ...prev,
+      [sectionId]: [...(prev[sectionId] || []), ...newFileEntries],
+    }))
+    setMode('upload')
+  }, [sections])
+
   const handleDragOver = useCallback((e) => {
     e.preventDefault()
+    e.stopPropagation()
     setDragOver(true)
   }, [])
 
-  const handleDragLeave = useCallback(() => {
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
     setDragOver(false)
   }, [])
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()
+    e.stopPropagation()
     setDragOver(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addRealFiles(e.dataTransfer.files)
+    }
+  }, [addRealFiles])
+
+  const handleFileInputChange = useCallback((e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addRealFiles(e.target.files)
+    }
+    // Reset input so the same file can be selected again
+    e.target.value = ''
+  }, [addRealFiles])
+
+  const handleClickDropZone = useCallback(() => {
+    fileInputRef.current?.click()
   }, [])
+
+  // ── Handle demo file loading ──────────────────────────────────────
 
   const handleLoadDemo = useCallback(async () => {
     setLoadingDemo(true)
@@ -115,10 +163,9 @@ export default function FileRepository({ sections, onRun, runLabel, variant }) {
       }
     }
 
-    // Show files appearing one by one
     for (let i = 0; i < allNames.length; i++) {
       const { section, name } = allNames[i]
-      const file = { name, size: getFileSize() }
+      const file = { name, size: randomDemoSize() }
 
       await new Promise(resolve => {
         setAnimatingFiles(prev => new Set(prev).add(name))
@@ -136,23 +183,58 @@ export default function FileRepository({ sections, onRun, runLabel, variant }) {
       })
     }
 
+    setMode('demo')
     setLoadingDemo(false)
   }, [sections])
 
+  // ── Remove file ───────────────────────────────────────────────────
+
   const handleRemoveFile = useCallback((sectionId, fileName) => {
-    setFiles(prev => ({
-      ...prev,
-      [sectionId]: (prev[sectionId] || []).filter(f => f.name !== fileName),
-    }))
+    setFiles(prev => {
+      const updated = {
+        ...prev,
+        [sectionId]: (prev[sectionId] || []).filter(f => f.name !== fileName),
+      }
+      // If no files left, reset mode
+      const remaining = Object.values(updated).flat()
+      if (remaining.length === 0) setMode(null)
+      return updated
+    })
   }, [])
+
+  // ── Execute ───────────────────────────────────────────────────────
+
+  const handleExecute = useCallback(() => {
+    if (mode === 'demo') {
+      onRunDemo()
+    } else if (mode === 'upload') {
+      // Collect all native File objects
+      const nativeFiles = Object.values(files)
+        .flat()
+        .map(f => f.nativeFile)
+        .filter(Boolean)
+      onRunUpload(nativeFiles)
+    }
+  }, [mode, files, onRunDemo, onRunUpload])
 
   return (
     <div>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".xlsx,.xls,.csv,.pdf"
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+
       {/* Drop zone */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={handleClickDropZone}
         style={{
           ...card,
           padding: '40px',
@@ -164,6 +246,7 @@ export default function FileRepository({ sections, onRun, runLabel, variant }) {
           background: dragOver ? 'rgba(232,114,26,0.03)' : colors.white,
           borderRadius: '12px',
           transition: 'all 0.2s',
+          cursor: 'pointer',
         }}
       >
         <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.6 }}>📁</div>
@@ -176,10 +259,18 @@ export default function FileRepository({ sections, onRun, runLabel, variant }) {
         <p style={{
           color: colors.grayLight,
           fontSize: '13px',
+          marginBottom: '4px',
+        }}>o haz clic para seleccionar</p>
+        <p style={{
+          color: colors.grayLight,
+          fontSize: '12px',
           marginBottom: '16px',
         }}>Excel, CSV o PDF</p>
         <button
-          onClick={handleLoadDemo}
+          onClick={(e) => {
+            e.stopPropagation()
+            handleLoadDemo()
+          }}
           disabled={loadingDemo || hasFiles}
           style={{
             background: hasFiles ? colors.bg : colors.navy,
@@ -256,7 +347,7 @@ export default function FileRepository({ sections, onRun, runLabel, variant }) {
           animation: 'fadeIn 0.4s ease',
         }}>
           <button
-            onClick={onRun}
+            onClick={handleExecute}
             style={{
               ...btnPrimary,
               padding: '16px 48px',

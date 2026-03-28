@@ -30,13 +30,13 @@ const sections = [
   },
 ]
 
-export default function RecWorkspace({ onRun }) {
+export default function RecWorkspace({ onRunDemo, onRunUpload }) {
   return (
     <FileRepository
       sections={sections}
-      onRun={onRun}
+      onRunDemo={onRunDemo}
+      onRunUpload={onRunUpload}
       runLabel="Ejecutar reconciliación"
-      variant="rec"
     />
   )
 }

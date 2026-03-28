@@ -21,15 +21,6 @@ async function apiCall(url, options = {}) {
   return res.json()
 }
 
-/*
-  Screen states:
-  - rec-workspace → rec-processing
-  - dq-workspace → dq-processing
-
-  Sidebar always visible. AgentPanel appears during processing.
-  Results appear below AgentPanel after animation completes.
-*/
-
 export default function App() {
   const [screen, setScreen] = useState('rec-workspace')
   const [data, setData] = useState(null)
@@ -47,9 +38,9 @@ export default function App() {
     else if (id === 'data-quality') setScreen('dq-workspace')
   }
 
-  // ─── Reconciliation flow ───────────────────────────────────────────
+  // ─── Reconciliation ────────────────────────────────────────────────
 
-  const handleRunReconciliation = async () => {
+  const handleRecDemo = async () => {
     setScreen('rec-processing'); setError(null); setData(null); setShowResults(false)
     try {
       const result = await apiCall(`${API_URL}/api/demo-sabseg-logged`, { method: 'POST' })
@@ -60,9 +51,25 @@ export default function App() {
     }
   }
 
-  // ─── Data Quality flow ─────────────────────────────────────────────
+  const handleRecUpload = async (files) => {
+    setScreen('rec-processing'); setError(null); setData(null); setShowResults(false)
+    try {
+      const formData = new FormData()
+      files.forEach(f => formData.append('files', f))
+      const result = await apiCall(`${API_URL}/api/reconcile-logged`, {
+        method: 'POST',
+        body: formData,
+      })
+      setData(result)
+    } catch (e) {
+      setError(e.message)
+      setScreen('rec-workspace')
+    }
+  }
 
-  const handleDQValidateAll = async () => {
+  // ─── Data Quality ──────────────────────────────────────────────────
+
+  const handleDQDemo = async () => {
     setScreen('dq-processing'); setError(null); setData(null); setShowResults(false)
     try {
       const result = await apiCall(`${API_URL}/api/data-quality-demo-logged`, { method: 'POST' })
@@ -73,17 +80,32 @@ export default function App() {
     }
   }
 
+  const handleDQUpload = async (files) => {
+    setScreen('dq-processing'); setError(null); setData(null); setShowResults(false)
+    try {
+      const formData = new FormData()
+      files.forEach(f => formData.append('files', f))
+      const result = await apiCall(`${API_URL}/api/data-quality-logged`, {
+        method: 'POST',
+        body: formData,
+      })
+      setData(result)
+    } catch (e) {
+      setError(e.message)
+      setScreen('dq-workspace')
+    }
+  }
+
+  // ─── Shared ────────────────────────────────────────────────────────
+
   const handleAgentAnimationDone = useCallback(() => {
     setShowResults(true)
   }, [])
 
   const scrollToResults = () => {
-    if (resultsRef.current) {
+    if (resultsRef.current)
       resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
   }
-
-  // ─── Breadcrumbs ───────────────────────────────────────────────────
 
   const getBreadcrumbs = () => {
     const crumbs = []
@@ -96,8 +118,6 @@ export default function App() {
     }
     return crumbs
   }
-
-  // ─── Routing ───────────────────────────────────────────────────────
 
   const isRecProcessing = screen === 'rec-processing'
   const isDQProcessing = screen === 'dq-processing'
@@ -139,7 +159,7 @@ export default function App() {
                   Sube los ficheros de saldos y estadísticas para la reconciliación contable
                 </p>
               </div>
-              <RecWorkspace onRun={handleRunReconciliation} />
+              <RecWorkspace onRunDemo={handleRecDemo} onRunUpload={handleRecUpload} />
             </div>
           )}
 
@@ -193,7 +213,7 @@ export default function App() {
                   Sube los ficheros de recibos de corredurías para validación
                 </p>
               </div>
-              <DQWorkspace onRun={handleDQValidateAll} />
+              <DQWorkspace onRunDemo={handleDQDemo} onRunUpload={handleDQUpload} />
             </div>
           )}
 

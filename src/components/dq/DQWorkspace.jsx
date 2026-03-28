@@ -15,13 +15,13 @@ const sections = [
   },
 ]
 
-export default function DQWorkspace({ onRun }) {
+export default function DQWorkspace({ onRunDemo, onRunUpload }) {
   return (
     <FileRepository
       sections={sections}
-      onRun={onRun}
+      onRunDemo={onRunDemo}
+      onRunUpload={onRunUpload}
       runLabel="Validar entregas"
-      variant="dq"
     />
   )
 }

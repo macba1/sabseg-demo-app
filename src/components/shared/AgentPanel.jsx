@@ -113,7 +113,6 @@ function EntryRow({ entry, visible, isLast, index }) {
         alignItems: 'center',
         position: 'relative',
       }}>
-        {/* Vertical line above dot */}
         {index > 0 && (
           <div style={{
             width: '1px',
@@ -121,7 +120,6 @@ function EntryRow({ entry, visible, isLast, index }) {
             background: 'rgba(148,163,184,0.2)',
           }} />
         )}
-        {/* Dot */}
         <div style={{
           width: '8px',
           height: '8px',
@@ -130,7 +128,6 @@ function EntryRow({ entry, visible, isLast, index }) {
           flexShrink: 0,
           marginTop: index === 0 ? '8px' : '0',
         }} />
-        {/* Vertical line below dot */}
         {!isLast && (
           <div style={{
             width: '1px',
@@ -184,7 +181,6 @@ function EntryRow({ entry, visible, isLast, index }) {
           </span>
         </div>
 
-        {/* Data block */}
         {hasData && (
           <div style={{
             marginTop: '6px',
@@ -225,7 +221,7 @@ function EntryRow({ entry, visible, isLast, index }) {
   )
 }
 
-// ── Simulated lines (no emojis) ──────────────────────────────────────
+// ── Simulated lines ──────────────────────────────────────────────────
 
 const SIMULATED_REC = [
   { agent_label: 'Orquestador', detail: 'Iniciando proceso de reconciliacion' },
@@ -254,20 +250,24 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
   const bottomRef = useRef(null)
   const simLines = variant === 'dq' ? SIMULATED_DQ : SIMULATED_REC
 
-  // Phase 1: animate simulated lines
+  // Phase 1: show simulated lines one by one every 1.5s
   useEffect(() => {
     if (phase !== 'simulated') return
+    // Show first line immediately
     setSimCount(1)
     let i = 1
     const timer = setInterval(() => {
       i++
-      if (i > simLines.length) { clearInterval(timer); return }
+      if (i > simLines.length) {
+        clearInterval(timer)
+        return
+      }
       setSimCount(i)
-    }, 800)
+    }, 1500)
     return () => clearInterval(timer)
   }, [phase, simLines.length])
 
-  // Transition to phase 2
+  // Transition: when real entries arrive, clear simulated and start real phase
   useEffect(() => {
     if (entries && entries.length > 0 && phase === 'simulated') {
       setPhase('real')
@@ -275,24 +275,27 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
     }
   }, [entries, phase])
 
-  // Phase 2: animate real entries
+  // Phase 2: show real entries one by one every 400ms
   useEffect(() => {
     if (phase !== 'real' || !entries) return
     let i = 0
     const timer = setInterval(() => {
       i++
       setRealCount(i)
-      if (i >= entries.length) { clearInterval(timer); setPhase('done') }
-    }, 300)
+      if (i >= entries.length) {
+        clearInterval(timer)
+        setPhase('done')
+      }
+    }, 400)
     return () => clearInterval(timer)
   }, [phase, entries])
 
-  // Notify parent
+  // Notify parent when all real entries are shown
   useEffect(() => {
     if (phase === 'done' && onAnimationDone) onAnimationDone()
   }, [phase, onAnimationDone])
 
-  // Auto-scroll
+  // Auto-scroll to bottom as lines appear
   useEffect(() => {
     if (bottomRef.current)
       bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -300,9 +303,16 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
 
   const isActive = phase === 'simulated' || phase === 'real'
   const isDone = phase === 'done'
+
+  // Simulated phase: show simulated lines; real/done phase: show real lines
   const displayEntries = phase === 'simulated'
     ? simLines.slice(0, simCount)
     : (entries || []).slice(0, realCount)
+
+  const totalVisible = displayEntries.length
+  const isLastKnown = phase === 'simulated'
+    ? simCount >= simLines.length
+    : isDone
 
   return (
     <div style={{
@@ -346,7 +356,7 @@ export default function AgentPanel({ entries, qaReport, loading, variant = 'rec'
             key={phase === 'simulated' ? `sim-${i}` : `real-${i}`}
             entry={entry}
             visible={true}
-            isLast={i === displayEntries.length - 1 && (isDone || (phase === 'simulated' && simCount >= simLines.length))}
+            isLast={i === totalVisible - 1 && isLastKnown}
             index={i}
           />
         ))}
