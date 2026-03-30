@@ -84,10 +84,15 @@ function IssueCard({ issue }) {
 function FileCard({ result }) {
   const [expanded, setExpanded] = useState(false)
   if (!result) return null
-  const allIssues = [...(result.errors || []), ...(result.warnings || []), ...(result.corrections || [])].filter(Boolean)
-  const errorCount = (result.errors || []).reduce((s, e) => s + (e?.cantidad || 0), 0)
-  const warnCount = (result.warnings || []).reduce((s, w) => s + (w?.cantidad || 0), 0)
-  const autoCount = result.auto_correctable || 0
+  const errors = (result.errors || []).filter(Boolean)
+  const warnings = (result.warnings || []).filter(Boolean)
+  const corrections = (result.corrections || []).filter(Boolean)
+  const allIssues = [...errors, ...warnings, ...corrections]
+  // Count by number of issue TYPES, not sum of cantidades
+  // Errors that are auto-fix go in autoCount, the rest in errorCount
+  const errorCount = errors.filter(e => !e.correccion_auto).length
+  const warnCount = warnings.length
+  const autoCount = errors.filter(e => e.correccion_auto).length + corrections.length
 
   return (
     <div style={{ ...card, marginBottom: '12px', overflow: 'hidden' }}>
@@ -183,17 +188,27 @@ function ArrentaComparison({ data }) {
 
 function DetailedLogSection({ logData }) {
   if (!logData) return null
-  const files = (logData.files || []).filter(Boolean)
+  // Backend returns { ficheros: [...], total_incidencias, auto_corregidas, requieren_revision }
+  const files = (logData.ficheros || logData.files || []).filter(Boolean)
+  if (files.length === 0) return null
 
   return (
     <div style={{ ...card, marginTop: '24px', padding: '24px', overflow: 'hidden' }}>
-      <h3 style={{ color: colors.navy, fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>
+      <h3 style={{ color: colors.navy, fontSize: '18px', fontWeight: '700', marginBottom: '4px' }}>
         Log detallado de incidencias
       </h3>
+      {logData.total_incidencias != null && (
+        <p style={{ color: colors.gray, fontSize: '13px', marginBottom: '16px' }}>
+          {logData.total_incidencias} incidencias totales:
+          <span style={{ color: colors.green, fontWeight: '600' }}> {logData.auto_corregidas ?? 0} corregidas</span>,
+          <span style={{ color: colors.yellow, fontWeight: '600' }}> {logData.requieren_revision ?? 0} requieren revisión</span>
+        </p>
+      )}
       {files.map((file, fi) => {
-        const rows = (file.issues || []).filter(Boolean)
-        const corrected = rows.filter(r => r?.action === 'Corregido').length
-        const review = rows.filter(r => r?.action === 'Requiere revisión').length
+        // Backend: each file has { filename, correduria, log: [...entries] }
+        const rows = (file.log || file.issues || []).filter(Boolean)
+        const corrected = rows.filter(r => r?.accion === 'Corregido').length
+        const review = rows.filter(r => r?.accion === 'Requiere revisión').length
         return (
           <div key={fi} style={{ marginBottom: '24px' }}>
             <div style={{
@@ -201,7 +216,7 @@ function DetailedLogSection({ logData }) {
               marginBottom: '10px', flexWrap: 'wrap', gap: '8px',
             }}>
               <h4 style={{ color: colors.navy, fontSize: '15px', fontWeight: '600' }}>
-                {file.filename || file.correduria || `Fichero ${fi + 1}`}
+                {file.correduria || file.filename || `Fichero ${fi + 1}`}
               </h4>
               <span style={{ color: colors.gray, fontSize: '13px' }}>
                 {rows.length} incidencia{rows.length !== 1 ? 's' : ''}:
@@ -229,25 +244,27 @@ function DetailedLogSection({ logData }) {
                   <tbody>
                     {rows.map((row, ri) => {
                       if (!row) return null
-                      const isCorrected = row.action === 'Corregido'
-                      const isReview = row.action === 'Requiere revisión'
+                      // Backend field names: fila, campo, error, valor_original, accion, valor_corregido
+                      const accion = row.accion || row.action || '-'
+                      const isCorrected = accion === 'Corregido'
+                      const isReview = accion === 'Requiere revisión'
                       const rowBg = isCorrected ? colors.greenBg : isReview ? colors.yellowBg : colors.white
                       return (
                         <tr key={ri} style={{ background: rowBg, borderBottom: `1px solid ${colors.border}` }}>
-                          <td style={{ padding: '8px 12px', color: colors.navy, fontWeight: '500' }}>{row.row ?? '-'}</td>
-                          <td style={{ padding: '8px 12px', color: colors.navy }}>{row.field || '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.navy, fontWeight: '500' }}>{row.fila ?? row.row ?? '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.navy }}>{row.campo || row.field || '-'}</td>
                           <td style={{ padding: '8px 12px', color: colors.red, fontSize: '12px' }}>{row.error || '-'}</td>
-                          <td style={{ padding: '8px 12px', color: colors.gray, fontFamily: 'monospace', fontSize: '12px' }}>{row.original_value ?? '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.gray, fontFamily: 'monospace', fontSize: '12px' }}>{row.valor_original ?? row.original_value ?? '-'}</td>
                           <td style={{ padding: '8px 12px' }}>
                             <span style={{
                               padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
                               background: isCorrected ? colors.greenBg : isReview ? colors.yellowBg : colors.bg,
                               color: isCorrected ? colors.green : isReview ? colors.yellow : colors.gray,
                               border: `1px solid ${isCorrected ? colors.greenBorder : isReview ? colors.yellowBorder : colors.border}`,
-                            }}>{row.action || '-'}</span>
+                            }}>{accion}</span>
                           </td>
                           <td style={{ padding: '8px 12px', color: isCorrected ? colors.green : colors.gray, fontFamily: 'monospace', fontSize: '12px', fontWeight: isCorrected ? '600' : '400' }}>
-                            {row.corrected_value ?? '-'}
+                            {row.valor_corregido ?? row.corrected_value ?? '-'}
                           </td>
                         </tr>
                       )
