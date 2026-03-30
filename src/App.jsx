@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { colors } from './theme'
+import LoginScreen from './components/LoginScreen'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import RecWorkspace from './components/rec/RecWorkspace'
@@ -22,6 +23,7 @@ async function apiCall(url, options = {}) {
 }
 
 export default function App() {
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('sabseg_auth') === '1')
   const [screen, setScreen] = useState('rec-workspace')
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
@@ -122,6 +124,8 @@ export default function App() {
   const isRecProcessing = screen === 'rec-processing'
   const isDQProcessing = screen === 'dq-processing'
   const isProcessing = isRecProcessing || isDQProcessing
+
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />
 
   return (
     <div style={{
