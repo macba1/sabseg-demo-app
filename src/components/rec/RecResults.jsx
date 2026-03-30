@@ -8,10 +8,12 @@ const DECISION_COLORS = {
 }
 
 function KPI({ label, value, sub }) {
+  const strVal = String(value || '')
+  const isLong = strVal.length > 12
   return (
-    <div style={{ ...card, padding: '20px 24px', flex: 1, minWidth: '180px' }}>
+    <div style={{ ...card, padding: '20px 24px', flex: 1, minWidth: '200px' }}>
       <p style={{ color: colors.gray, fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>{label}</p>
-      <p style={{ color: colors.navy, fontSize: '28px', fontWeight: '700', lineHeight: '1.2' }}>{value}</p>
+      <p style={{ color: colors.navy, fontSize: isLong ? '20px' : '28px', fontWeight: '700', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</p>
       {sub && <p style={{ color: colors.grayLight, fontSize: '12px', marginTop: '4px' }}>{sub}</p>}
     </div>
   )
@@ -102,7 +104,7 @@ export default function RecResults({ data, apiUrl }) {
   const fmt = v => typeof v === 'number' ? v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '-'
   const pctFmt = v => typeof v === 'number' ? v.toFixed(1) + '%' : '-'
 
-  const rowKey = (r, i) => r.id || `${r.empresa}-${r.mes}-${r.cuenta}-${i}`
+  const rowKey = (r) => r.id || `${r.empresa}-${r.mes || r.mes_label}-${r.cuenta || r.cuenta_label}`
 
   // Progress
   const totalPartidas = allRows.length
@@ -115,16 +117,25 @@ export default function RecResults({ data, apiUrl }) {
   }, [decisions])
 
   // Dynamic pending differences by cuenta
+  // Must use allRows index for rowKey, not filter index
   const pendiente705 = useMemo(() => {
-    return allRows
-      .filter((r, i) => (r.cuenta === '705' || r.cuenta_label?.includes('705')) && !closedKeys.has(rowKey(r, i)))
-      .reduce((sum, r) => sum + Math.abs(r.diferencia || 0), 0)
+    let sum = 0
+    for (let i = 0; i < allRows.length; i++) {
+      const r = allRows[i]
+      if ((r.cuenta === '705' || r.cuenta_label?.includes('705')) && !closedKeys.has(rowKey(r)))
+        sum += Math.abs(r.diferencia || 0)
+    }
+    return sum
   }, [allRows, closedKeys])
 
   const pendiente623 = useMemo(() => {
-    return allRows
-      .filter((r, i) => (r.cuenta === '623' || r.cuenta_label?.includes('623')) && !closedKeys.has(rowKey(r, i)))
-      .reduce((sum, r) => sum + Math.abs(r.diferencia || 0), 0)
+    let sum = 0
+    for (let i = 0; i < allRows.length; i++) {
+      const r = allRows[i]
+      if ((r.cuenta === '623' || r.cuenta_label?.includes('623')) && !closedKeys.has(rowKey(r)))
+        sum += Math.abs(r.diferencia || 0)
+    }
+    return sum
   }, [allRows, closedKeys])
 
   const setDecision = useCallback((key, decision) => {
@@ -139,7 +150,7 @@ export default function RecResults({ data, apiUrl }) {
     const updates = {}
     allRows.forEach((r, i) => {
       if (r.status === 'match' || r.status === 'warning') {
-        updates[rowKey(r, i)] = 'cerrar'
+        updates[rowKey(r)] = 'cerrar'
       }
     })
     setDecisions(prev => ({ ...prev, ...updates }))
@@ -247,7 +258,7 @@ export default function RecResults({ data, apiUrl }) {
           <tbody>
             {rows.map((r, i) => {
               if (!r) return null
-              const key = rowKey(r, i)
+              const key = rowKey(r)
               const decision = decisions[key]
               const dc = decision ? DECISION_COLORS[decision] : null
               return (
