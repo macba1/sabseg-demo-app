@@ -104,7 +104,7 @@ export default function RecResults({ data, apiUrl }) {
   const fmt = v => typeof v === 'number' ? v.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' }) : '-'
   const pctFmt = v => typeof v === 'number' ? v.toFixed(1) + '%' : '-'
 
-  const rowKey = (r) => r.id || `${r.empresa}-${r.mes || r.mes_label}-${r.cuenta || r.cuenta_label}`
+  const rowKey = (r) => String(r.id ?? `${r.empresa}-${r.mes || r.mes_label}-${r.cuenta || r.cuenta_label}`)
 
   // Progress
   const totalPartidas = allRows.length
