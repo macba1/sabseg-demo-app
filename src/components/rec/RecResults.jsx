@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { colors, card, btnPrimary, btnSecondary } from '../../theme'
 import StatusBadge from '../shared/StatusBadge'
 
@@ -109,13 +109,23 @@ export default function RecResults({ data, apiUrl }) {
   const resolved = Object.keys(decisions).length
   const resolvedPct = totalPartidas > 0 ? Math.round(resolved / totalPartidas * 100) : 0
 
-  // Dynamic pending difference: sum abs(diferencia) for rows NOT marked as 'cerrar'
-  const closedKeys = new Set(Object.entries(decisions).filter(([, d]) => d === 'cerrar').map(([k]) => k))
-  const pendingDiff = allRows.reduce((sum, r, i) => {
-    const key = rowKey(r, i)
-    if (closedKeys.has(key)) return sum
-    return sum + Math.abs(r.diferencia || 0)
-  }, 0)
+  // Set of closed row keys — recalculated when decisions change
+  const closedKeys = useMemo(() => {
+    return new Set(Object.entries(decisions).filter(([, d]) => d === 'cerrar').map(([k]) => k))
+  }, [decisions])
+
+  // Dynamic pending differences by cuenta
+  const pendiente705 = useMemo(() => {
+    return allRows
+      .filter((r, i) => (r.cuenta === '705' || r.cuenta_label?.includes('705')) && !closedKeys.has(rowKey(r, i)))
+      .reduce((sum, r) => sum + Math.abs(r.diferencia || 0), 0)
+  }, [allRows, closedKeys])
+
+  const pendiente623 = useMemo(() => {
+    return allRows
+      .filter((r, i) => (r.cuenta === '623' || r.cuenta_label?.includes('623')) && !closedKeys.has(rowKey(r, i)))
+      .reduce((sum, r) => sum + Math.abs(r.diferencia || 0), 0)
+  }, [allRows, closedKeys])
 
   const setDecision = useCallback((key, decision) => {
     setDecisions(prev => {
@@ -161,7 +171,8 @@ export default function RecResults({ data, apiUrl }) {
         <KPI label="Empresas analizadas" value={data.empresas_analizadas || 0} />
         <KPI label="Partidas totales" value={data.total_partidas || 0} />
         <KPI label="% Cuadrado" value={pctFmt(data.pct_cuadrado)} />
-        <KPI label="Diferencia pendiente" value={fmt(pendingDiff)} />
+        <KPI label="Pendiente 705 (Comisiones)" value={fmt(pendiente705)} />
+        <KPI label="Pendiente 623 (Cedidas)" value={fmt(pendiente623)} />
       </div>
 
       {/* Progress bar */}
