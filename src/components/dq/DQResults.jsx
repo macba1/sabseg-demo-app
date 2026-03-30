@@ -15,7 +15,11 @@ function KPI({ label, value, color }) {
 function IssueCard({ issue }) {
   const [expanded, setExpanded] = useState(false)
   if (!issue) return null
-  const sev = issue.correccion_auto ? 'auto-fix' : issue.severidad === 'error' ? 'error' : 'warning'
+  // Backend uses severidad: 'Alta', 'Media', 'Baja' — items from errors array
+  // should show as 'error', from corrections as 'auto-fix', rest as 'warning'
+  const sevLower = (issue.severidad || '').toLowerCase()
+  const isError = sevLower === 'alta' || sevLower === 'media' || sevLower === 'error'
+  const sev = issue.correccion_auto ? 'auto-fix' : isError ? 'error' : 'warning'
 
   return (
     <div style={{
