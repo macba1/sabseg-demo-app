@@ -177,11 +177,95 @@ function ArrentaComparison({ data }) {
   )
 }
 
+function DetailedLogSection({ logData }) {
+  if (!logData) return null
+  const files = (logData.files || []).filter(Boolean)
+
+  return (
+    <div style={{ ...card, marginTop: '24px', padding: '24px', overflow: 'hidden' }}>
+      <h3 style={{ color: colors.navy, fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>
+        Log detallado de incidencias
+      </h3>
+      {files.map((file, fi) => {
+        const rows = (file.issues || []).filter(Boolean)
+        const corrected = rows.filter(r => r?.action === 'Corregido').length
+        const review = rows.filter(r => r?.action === 'Requiere revisión').length
+        return (
+          <div key={fi} style={{ marginBottom: '24px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: '10px', flexWrap: 'wrap', gap: '8px',
+            }}>
+              <h4 style={{ color: colors.navy, fontSize: '15px', fontWeight: '600' }}>
+                {file.filename || file.correduria || `Fichero ${fi + 1}`}
+              </h4>
+              <span style={{ color: colors.gray, fontSize: '13px' }}>
+                {rows.length} incidencia{rows.length !== 1 ? 's' : ''}:
+                {corrected > 0 && <span style={{ color: colors.green, fontWeight: '600' }}> {corrected} corregida{corrected !== 1 ? 's' : ''}</span>}
+                {corrected > 0 && review > 0 && ','}
+                {review > 0 && <span style={{ color: colors.yellow, fontWeight: '600' }}> {review} requiere{review !== 1 ? 'n' : ''} revisión</span>}
+              </span>
+            </div>
+            {rows.length === 0 ? (
+              <p style={{ color: colors.green, fontSize: '13px' }}>Sin incidencias.</p>
+            ) : (
+              <div style={{ overflowX: 'auto', borderRadius: '8px', border: `1px solid ${colors.border}` }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: colors.bg, borderBottom: `2px solid ${colors.border}` }}>
+                      {['Fila', 'Campo', 'Error', 'Valor Original', 'Acción', 'Valor Corregido'].map(h => (
+                        <th key={h} style={{
+                          padding: '10px 12px', textAlign: 'left',
+                          color: colors.gray, fontWeight: '600', fontSize: '11px',
+                          textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, ri) => {
+                      if (!row) return null
+                      const isCorrected = row.action === 'Corregido'
+                      const isReview = row.action === 'Requiere revisión'
+                      const rowBg = isCorrected ? colors.greenBg : isReview ? colors.yellowBg : colors.white
+                      return (
+                        <tr key={ri} style={{ background: rowBg, borderBottom: `1px solid ${colors.border}` }}>
+                          <td style={{ padding: '8px 12px', color: colors.navy, fontWeight: '500' }}>{row.row ?? '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.navy }}>{row.field || '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.red, fontSize: '12px' }}>{row.error || '-'}</td>
+                          <td style={{ padding: '8px 12px', color: colors.gray, fontFamily: 'monospace', fontSize: '12px' }}>{row.original_value ?? '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>
+                            <span style={{
+                              padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600',
+                              background: isCorrected ? colors.greenBg : isReview ? colors.yellowBg : colors.bg,
+                              color: isCorrected ? colors.green : isReview ? colors.yellow : colors.gray,
+                              border: `1px solid ${isCorrected ? colors.greenBorder : isReview ? colors.yellowBorder : colors.border}`,
+                            }}>{row.action || '-'}</span>
+                          </td>
+                          <td style={{ padding: '8px 12px', color: isCorrected ? colors.green : colors.gray, fontFamily: 'monospace', fontSize: '12px', fontWeight: isCorrected ? '600' : '400' }}>
+                            {row.corrected_value ?? '-'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function DQResults({ data, apiUrl, apiCall }) {
   const [correctionsData, setCorrectionsData] = useState(null)
   const [reportsData, setReportsData] = useState(null)
+  const [detailedLog, setDetailedLog] = useState(null)
   const [loadingCorrections, setLoadingCorrections] = useState(false)
   const [loadingReports, setLoadingReports] = useState(false)
+  const [loadingLog, setLoadingLog] = useState(false)
   const [actionError, setActionError] = useState(null)
 
   if (!data) return null
@@ -204,6 +288,15 @@ export default function DQResults({ data, apiUrl, apiCall }) {
       setReportsData(res)
     } catch (e) { setActionError(e.message) }
     setLoadingReports(false)
+  }
+
+  const handleDetailedLog = async () => {
+    setLoadingLog(true); setActionError(null)
+    try {
+      const res = await apiCall(`${apiUrl}/api/detailed-log-demo`, { method: 'POST' })
+      setDetailedLog(res)
+    } catch (e) { setActionError(e.message) }
+    setLoadingLog(false)
   }
 
   return (
@@ -252,9 +345,23 @@ export default function DQResults({ data, apiUrl, apiCall }) {
         >
           {loadingReports ? 'Generando...' : 'Generar informes para corredurías'}
         </button>
+        <button
+          onClick={handleDetailedLog}
+          disabled={loadingLog || detailedLog}
+          style={{
+            ...btnSecondary,
+            opacity: loadingLog ? 0.6 : 1,
+            background: detailedLog ? colors.bg : colors.white,
+          }}
+        >
+          {loadingLog ? 'Cargando...' : detailedLog ? 'Log cargado' : 'Ver log detallado'}
+        </button>
       </div>
 
       <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
+
+      {/* Detailed log */}
+      <DetailedLogSection logData={detailedLog} />
 
       {/* Corrections results */}
       {correctionsData && (
