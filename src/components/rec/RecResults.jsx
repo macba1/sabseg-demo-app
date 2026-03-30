@@ -186,18 +186,32 @@ export default function RecResults({ data, apiUrl }) {
         <KPI label="Pendiente 623 (Cedidas)" value={fmt(pendiente623)} />
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar + close all button */}
       <div style={{ ...card, padding: '16px 20px', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span style={{ color: colors.navy, fontSize: '14px', fontWeight: '600' }}>
             Cierre: {resolved}/{totalPartidas} partidas resueltas ({resolvedPct}%)
           </span>
-          {resolved > 0 && (
-            <span style={{ color: colors.grayLight, fontSize: '12px' }}>
-              {Object.values(decisions).filter(d => d === 'cerrar').length} cerradas,{' '}
-              {Object.values(decisions).filter(d => d === 'pendiente').length} pendientes
-            </span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {resolved > 0 && (
+              <span style={{ color: colors.grayLight, fontSize: '12px' }}>
+                {Object.values(decisions).filter(d => d === 'cerrar').length} cerradas,{' '}
+                {Object.values(decisions).filter(d => d === 'pendiente').length} pendientes
+              </span>
+            )}
+            <button
+              onClick={closeAllMatches}
+              style={{
+                ...btnPrimary,
+                padding: '8px 16px',
+                fontSize: '13px',
+              }}
+              onMouseEnter={e => e.target.style.background = '#D4650F'}
+              onMouseLeave={e => e.target.style.background = colors.orange}
+            >
+              Cerrar todas las cuadradas
+            </button>
+          </div>
         </div>
         <div style={{ height: '6px', borderRadius: '3px', background: colors.bg, overflow: 'hidden' }}>
           <div style={{
@@ -327,18 +341,15 @@ export default function RecResults({ data, apiUrl }) {
       }}>
         <button
           onClick={handleDownloadExcel}
-          disabled={downloading}
-          style={{ ...btnSecondary, opacity: downloading ? 0.6 : 1 }}
+          disabled={downloading || closedKeys.size === 0}
+          title={closedKeys.size === 0 ? 'Cierra partidas antes de descargar' : ''}
+          style={{
+            ...btnSecondary,
+            opacity: downloading || closedKeys.size === 0 ? 0.5 : 1,
+            cursor: closedKeys.size === 0 ? 'not-allowed' : 'pointer',
+          }}
         >
-          {downloading ? 'Descargando...' : 'Descargar informe de reconciliación (Excel)'}
-        </button>
-        <button
-          onClick={closeAllMatches}
-          style={btnPrimary}
-          onMouseEnter={e => e.target.style.background = '#D4650F'}
-          onMouseLeave={e => e.target.style.background = colors.orange}
-        >
-          Cerrar todas las cuadradas
+          {downloading ? 'Descargando...' : 'Descargar informe de cierre (Excel)'}
         </button>
       </div>
     </div>
