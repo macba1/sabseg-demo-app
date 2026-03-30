@@ -293,6 +293,15 @@ export default function DQResults({ data, apiUrl, apiCall }) {
 
   const results = (data.results || []).filter(Boolean)
 
+  // Compute KPI counts consistent with card counts (by issue type, not registro count)
+  let kpiErrors = 0, kpiWarnings = 0, kpiAutoFix = 0
+  results.forEach(r => {
+    const errors = (r.errors || []).filter(Boolean)
+    kpiErrors += errors.filter(e => !e.correccion_auto).length
+    kpiAutoFix += errors.filter(e => e.correccion_auto).length + (r.corrections || []).filter(Boolean).length
+    kpiWarnings += (r.warnings || []).filter(Boolean).length
+  })
+
   const handleCorrections = async () => {
     setLoadingCorrections(true); setActionError(null)
     try {
@@ -326,9 +335,9 @@ export default function DQResults({ data, apiUrl, apiCall }) {
       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '24px' }}>
         <KPI label="Ficheros" value={data.total_files || 0} />
         <KPI label="Registros" value={data.total_records || 0} />
-        <KPI label="Errores" value={data.total_errors || 0} color={colors.red} />
-        <KPI label="Warnings" value={data.total_warnings || 0} color={colors.yellow} />
-        <KPI label="Auto-corregibles" value={data.auto_correctable || 0} color={colors.green} />
+        <KPI label="Errores" value={kpiErrors} color={colors.red} />
+        <KPI label="Warnings" value={kpiWarnings} color={colors.yellow} />
+        <KPI label="Auto-corregibles" value={kpiAutoFix} color={colors.green} />
       </div>
 
       {/* Resumen ejecutivo */}
