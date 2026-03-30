@@ -187,6 +187,98 @@ function ArrentaComparison({ data }) {
 }
 
 
+function CorrectionsSection({ data: correctionsData }) {
+  const [showDetail, setShowDetail] = useState(false)
+  const fileResults = (correctionsData.results || []).filter(Boolean)
+  const totalFiles = fileResults.length
+
+  // Unique correction types across all files
+  const typeSet = new Set()
+  const allTypes = []
+  fileResults.forEach(r => {
+    (r.corrections_applied || []).filter(Boolean).forEach(c => {
+      const tipo = c?.tipo || ''
+      if (tipo && !typeSet.has(tipo)) {
+        typeSet.add(tipo)
+        allTypes.push(tipo)
+      }
+    })
+  })
+
+  const totalRemaining = correctionsData.total_remaining || 0
+
+  return (
+    <div style={{ ...card, marginTop: '16px', padding: '20px 24px' }}>
+      <h3 style={{ color: colors.navy, fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+        Correcciones aplicadas
+      </h3>
+
+      <p style={{ color: colors.navy, fontSize: '14px', marginBottom: '16px' }}>
+        Se corrigieron automáticamente <strong style={{ color: colors.green }}>{allTypes.length} tipos de errores</strong> en {totalFiles} ficheros
+      </p>
+
+      {/* Unique correction types */}
+      <div style={{ marginBottom: '16px' }}>
+        {allTypes.map((tipo, i) => (
+          <div key={i} style={{
+            padding: '8px 12px', borderRadius: '6px', background: colors.greenBg,
+            border: `1px solid ${colors.greenBorder}`, marginBottom: '4px', fontSize: '13px', color: colors.navy,
+          }}>
+            ✓ {tipo}
+          </div>
+        ))}
+      </div>
+
+      {/* Remaining */}
+      {totalRemaining > 0 && (
+        <p style={{ color: colors.orange, fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>
+          Pendientes de revisión manual: {totalRemaining} registros
+        </p>
+      )}
+
+      {/* Toggle detail by file */}
+      <button
+        onClick={() => setShowDetail(!showDetail)}
+        style={{
+          background: 'none', border: 'none', color: colors.gray,
+          fontSize: '13px', cursor: 'pointer', padding: '4px 0',
+          textDecoration: 'underline',
+        }}
+      >
+        {showDetail ? 'Ocultar detalle por fichero' : 'Ver detalle por fichero'}
+      </button>
+
+      {showDetail && (
+        <div style={{ marginTop: '12px' }}>
+          {fileResults.map((r, i) => (
+            <div key={i} style={{ marginBottom: '12px' }}>
+              <h4 style={{ color: colors.navy, fontSize: '14px', fontWeight: '600', marginBottom: '6px' }}>
+                {r.correduria || r.filename}
+              </h4>
+              {(r.corrections_applied || []).filter(Boolean).map((c, j) => (
+                <div key={j} style={{
+                  padding: '6px 12px', borderRadius: '6px', background: colors.greenBg,
+                  border: `1px solid ${colors.greenBorder}`, marginBottom: '3px', fontSize: '12px', color: colors.navy,
+                }}>
+                  ✓ {c?.tipo || ''} — {c?.detalle || ''}
+                </div>
+              ))}
+              {(r.remaining_issues || []).filter(Boolean).map((ri, j) => (
+                <div key={j} style={{
+                  padding: '6px 12px', borderRadius: '6px', background: colors.yellowBg,
+                  border: `1px solid ${colors.yellowBorder}`, marginBottom: '3px', fontSize: '12px', color: colors.yellow,
+                }}>
+                  ⚠ {ri?.tipo || ''} — {ri?.detalle || ''}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DQResults({ data, apiUrl, apiCall }) {
   const [correctionsData, setCorrectionsData] = useState(null)
   const [reportsData, setReportsData] = useState(null)
@@ -303,46 +395,7 @@ export default function DQResults({ data, apiUrl, apiCall }) {
       <ErrorBanner message={actionError} onDismiss={() => setActionError(null)} />
 
       {/* Corrections results */}
-      {correctionsData && (
-        <div style={{ ...card, marginTop: '16px', padding: '20px 24px' }}>
-          <h3 style={{ color: colors.navy, fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-            Correcciones aplicadas
-          </h3>
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ background: colors.greenBg, padding: '10px 16px', borderRadius: '6px' }}>
-              <span style={{ color: colors.gray, fontSize: '12px' }}>Correcciones</span>
-              <p style={{ color: colors.green, fontSize: '24px', fontWeight: '700' }}>{correctionsData.total_corrections}</p>
-            </div>
-            <div style={{ background: colors.yellowBg, padding: '10px 16px', borderRadius: '6px' }}>
-              <span style={{ color: colors.gray, fontSize: '12px' }}>Pendientes</span>
-              <p style={{ color: colors.yellow, fontSize: '24px', fontWeight: '700' }}>{correctionsData.total_remaining}</p>
-            </div>
-          </div>
-          {(correctionsData.results || []).filter(Boolean).map((r, i) => (
-            <div key={i} style={{ marginBottom: '12px' }}>
-              <h4 style={{ color: colors.navy, fontSize: '14px', fontWeight: '600', marginBottom: '6px' }}>
-                {r.correduria || r.filename}
-              </h4>
-              {(r.corrections_applied || []).filter(Boolean).map((c, j) => (
-                <div key={j} style={{
-                  padding: '8px 12px', borderRadius: '6px', background: colors.greenBg,
-                  border: `1px solid ${colors.greenBorder}`, marginBottom: '4px', fontSize: '13px', color: colors.navy,
-                }}>
-                  ✓ {c?.tipo || ''} — {c?.detalle || ''}
-                </div>
-              ))}
-              {(r.remaining_issues || []).filter(Boolean).map((ri, j) => (
-                <div key={j} style={{
-                  padding: '8px 12px', borderRadius: '6px', background: colors.yellowBg,
-                  border: `1px solid ${colors.yellowBorder}`, marginBottom: '4px', fontSize: '13px', color: colors.yellow,
-                }}>
-                  ⚠ {ri?.tipo || ''} — {ri?.detalle || ''}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+      {correctionsData && <CorrectionsSection data={correctionsData} />}
 
       {/* Reports results */}
       {reportsData && (
