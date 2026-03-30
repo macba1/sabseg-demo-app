@@ -3,9 +3,8 @@ import { colors, card, btnPrimary, btnSecondary } from '../../theme'
 import StatusBadge from '../shared/StatusBadge'
 
 const DECISION_COLORS = {
-  aprobar: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
-  ajustar: { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB' },
-  investigar: { bg: '#FFF7ED', border: '#FED7AA', text: '#EA580C' },
+  cerrar: { bg: '#ECFDF5', border: '#A7F3D0', text: '#059669' },
+  pendiente: { bg: '#FFF7ED', border: '#FED7AA', text: '#EA580C' },
 }
 
 function KPI({ label, value, sub }) {
@@ -88,7 +87,7 @@ export default function RecResults({ data, apiUrl }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [cuentaFilter, setCuentaFilter] = useState('all')
   const [expandedRow, setExpandedRow] = useState(null)
-  const [decisions, setDecisions] = useState({}) // { rowKey: 'aprobar'|'ajustar'|'investigar' }
+  const [decisions, setDecisions] = useState({}) // { rowKey: 'cerrar'|'pendiente' }
   const [downloading, setDownloading] = useState(false)
 
   if (!data) return null
@@ -110,15 +109,27 @@ export default function RecResults({ data, apiUrl }) {
   const resolved = Object.keys(decisions).length
   const resolvedPct = totalPartidas > 0 ? Math.round(resolved / totalPartidas * 100) : 0
 
+  // Dynamic pending difference: sum abs(diferencia) for rows NOT marked as 'cerrar'
+  const closedKeys = new Set(Object.entries(decisions).filter(([, d]) => d === 'cerrar').map(([k]) => k))
+  const pendingDiff = allRows.reduce((sum, r, i) => {
+    const key = rowKey(r, i)
+    if (closedKeys.has(key)) return sum
+    return sum + Math.abs(r.diferencia || 0)
+  }, 0)
+
   const setDecision = useCallback((key, decision) => {
-    setDecisions(prev => ({ ...prev, [key]: decision }))
+    setDecisions(prev => {
+      const next = { ...prev }
+      if (decision === undefined) { delete next[key] } else { next[key] = decision }
+      return next
+    })
   }, [])
 
-  const approveAllMatches = useCallback(() => {
+  const closeAllMatches = useCallback(() => {
     const updates = {}
     allRows.forEach((r, i) => {
-      if (r.status === 'match' && Math.abs(r.diferencia || 0) < 10) {
-        updates[rowKey(r, i)] = 'aprobar'
+      if (r.status === 'match' || r.status === 'warning') {
+        updates[rowKey(r, i)] = 'cerrar'
       }
     })
     setDecisions(prev => ({ ...prev, ...updates }))
@@ -150,7 +161,7 @@ export default function RecResults({ data, apiUrl }) {
         <KPI label="Empresas analizadas" value={data.empresas_analizadas || 0} />
         <KPI label="Partidas totales" value={data.total_partidas || 0} />
         <KPI label="% Cuadrado" value={pctFmt(data.pct_cuadrado)} />
-        <KPI label="Diferencia total 705" value={fmt(data.diferencia_total_705)} />
+        <KPI label="Diferencia pendiente" value={fmt(pendingDiff)} />
       </div>
 
       {/* Progress bar */}
@@ -161,9 +172,8 @@ export default function RecResults({ data, apiUrl }) {
           </span>
           {resolved > 0 && (
             <span style={{ color: colors.grayLight, fontSize: '12px' }}>
-              {Object.values(decisions).filter(d => d === 'aprobar').length} aprobadas,{' '}
-              {Object.values(decisions).filter(d => d === 'ajustar').length} ajustadas,{' '}
-              {Object.values(decisions).filter(d => d === 'investigar').length} a investigar
+              {Object.values(decisions).filter(d => d === 'cerrar').length} cerradas,{' '}
+              {Object.values(decisions).filter(d => d === 'pendiente').length} pendientes
             </span>
           )}
         </div>
@@ -256,11 +266,18 @@ export default function RecResults({ data, apiUrl }) {
                     <td style={{ padding: '10px 12px', textAlign: 'right', color: colors.gray }}>{pctFmt(r.pct)}</td>
                     <td style={{ padding: '10px 12px' }}><StatusBadge status={r.status} /></td>
                     <td style={{ padding: '8px 8px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <DecisionButton label="Aprobar" color="#059669" active={decision === 'aprobar'} onClick={() => setDecision(key, 'aprobar')} />
-                        <DecisionButton label="Ajustar" color="#2563EB" active={decision === 'ajustar'} onClick={() => setDecision(key, 'ajustar')} />
-                        <DecisionButton label="Investigar" color="#EA580C" active={decision === 'investigar'} onClick={() => setDecision(key, 'investigar')} />
-                      </div>
+                      {decision === 'cerrar' ? (
+                        <span style={{ color: '#059669', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                          onClick={e => { e.stopPropagation(); setDecision(key, undefined) }}>✓ Cerrada</span>
+                      ) : decision === 'pendiente' ? (
+                        <span style={{ color: '#EA580C', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                          onClick={e => { e.stopPropagation(); setDecision(key, undefined) }}>Pendiente</span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <DecisionButton label="Cerrar" color="#059669" active={false} onClick={() => setDecision(key, 'cerrar')} />
+                          <DecisionButton label="Pendiente" color="#EA580C" active={false} onClick={() => setDecision(key, 'pendiente')} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                   {expandedRow === i && <DetailPanel row={r} />}
@@ -294,12 +311,12 @@ export default function RecResults({ data, apiUrl }) {
           {downloading ? 'Descargando...' : 'Descargar informe de reconciliación (Excel)'}
         </button>
         <button
-          onClick={approveAllMatches}
+          onClick={closeAllMatches}
           style={btnPrimary}
           onMouseEnter={e => e.target.style.background = '#D4650F'}
           onMouseLeave={e => e.target.style.background = colors.orange}
         >
-          Aprobar todas las cuadradas
+          Cerrar todas las cuadradas
         </button>
       </div>
     </div>
