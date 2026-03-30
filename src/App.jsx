@@ -199,7 +199,7 @@ export default function App() {
                     Ver resultados detallados ↓
                   </button>
                   <div ref={resultsRef} style={{ animation: 'fadeIn 0.4s ease' }}>
-                    <RecResults data={data} />
+                    <RecResults data={data} apiUrl={API_URL} />
                   </div>
                 </div>
               )}
