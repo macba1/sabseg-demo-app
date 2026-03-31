@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react'
+import * as XLSX from 'xlsx'
 import { colors, card, btnPrimary, btnSecondary } from '../../theme'
 import StatusBadge from '../shared/StatusBadge'
 
@@ -85,12 +86,11 @@ function DecisionButton({ label, color, active, onClick }) {
   )
 }
 
-export default function RecResults({ data, apiUrl }) {
+export default function RecResults({ data }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [cuentaFilter, setCuentaFilter] = useState('all')
   const [expandedRow, setExpandedRow] = useState(null)
   const [decisions, setDecisions] = useState({}) // { rowKey: 'cerrar'|'pendiente' }
-  const [downloading, setDownloading] = useState(false)
 
   if (!data) return null
 
@@ -156,24 +156,49 @@ export default function RecResults({ data, apiUrl }) {
     setDecisions(prev => ({ ...prev, ...updates }))
   }, [allRows])
 
-  const handleDownloadExcel = async () => {
-    setDownloading(true)
-    try {
-      const url = apiUrl || ''
-      const response = await fetch(`${url}/api/export-reconciliation`, { method: 'POST' })
-      if (!response.ok) throw new Error(`Error ${response.status}`)
-      const blob = await response.blob()
-      const blobUrl = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = blobUrl
-      a.download = 'reconciliacion_sabseg.xlsx'
-      a.click()
-      window.URL.revokeObjectURL(blobUrl)
-    } catch (e) {
-      console.error('Download failed:', e)
+  const handleDownloadExcel = useCallback(() => {
+    const cerradas = Object.values(decisions).filter(d => d === 'cerrar').length
+    const pendientes = Object.values(decisions).filter(d => d === 'pendiente').length
+    const sinRevisar = totalPartidas - cerradas - pendientes
+    const pctCompletado = totalPartidas > 0 ? Math.round((cerradas + pendientes) / totalPartidas * 100) : 0
+
+    const statusLabel = s => s === 'match' ? 'Cuadrado' : s === 'warning' ? 'Diferencia menor' : 'Discrepancia'
+    const decisionLabel = key => {
+      const d = decisions[key]
+      return d === 'cerrar' ? 'Cerrada' : d === 'pendiente' ? 'Pendiente' : 'Sin revisar'
     }
-    setDownloading(false)
-  }
+
+    // Resumen sheet
+    const resumen = [
+      { Concepto: 'Fecha', Valor: new Date().toLocaleDateString('es-ES') },
+      { Concepto: 'Periodo', Valor: 'Enero - Febrero 2026' },
+      { Concepto: 'Empresas analizadas', Valor: data.empresas_analizadas || 0 },
+      { Concepto: 'Total partidas', Valor: totalPartidas },
+      { Concepto: 'Cerradas', Valor: cerradas },
+      { Concepto: 'Pendientes', Valor: pendientes },
+      { Concepto: 'Sin revisar', Valor: sinRevisar },
+      { Concepto: '% completado', Valor: `${pctCompletado}%` },
+    ]
+
+    // Detalle sheet
+    const detalle = allRows.map(r => ({
+      'Empresa': r.empresa || '',
+      'Mes': r.mes_label || r.mes || '',
+      'Cuenta': r.cuenta_label || r.cuenta || '',
+      'Estadística €': r.estadistica ?? '',
+      'Contabilidad €': r.contabilidad ?? '',
+      'Diferencia €': r.diferencia ?? '',
+      '%': r.pct ?? '',
+      'Estado': statusLabel(r.status),
+      'Decisión': decisionLabel(rowKey(r)),
+      'Explicación': r.explicacion || '',
+    }))
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), 'Resumen')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalle), 'Detalle')
+    XLSX.writeFile(wb, 'cierre_reconciliacion_ene_feb_2026.xlsx')
+  }, [decisions, allRows, totalPartidas, data])
 
   return (
     <div id="results-section">
@@ -341,15 +366,15 @@ export default function RecResults({ data, apiUrl }) {
       }}>
         <button
           onClick={handleDownloadExcel}
-          disabled={downloading || closedKeys.size === 0}
+          disabled={closedKeys.size === 0}
           title={closedKeys.size === 0 ? 'Cierra partidas antes de descargar' : ''}
           style={{
             ...btnSecondary,
-            opacity: downloading || closedKeys.size === 0 ? 0.5 : 1,
+            opacity: closedKeys.size === 0 ? 0.5 : 1,
             cursor: closedKeys.size === 0 ? 'not-allowed' : 'pointer',
           }}
         >
-          {downloading ? 'Descargando...' : 'Descargar informe de cierre (Excel)'}
+          Descargar informe de cierre (Excel)
         </button>
       </div>
     </div>
